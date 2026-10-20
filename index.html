@@ -362,6 +362,12 @@ a.btn.green{color:#fff;}
 .hq-m.on .hq-mbar{opacity:1;}
 .hq-mv{font-size:9.5px;font-weight:700;color:var(--amb);white-space:nowrap;}
 .hq-ml{font-size:10.5px;color:var(--muted);}
+
+/* v30.2: 날씨 분석 */
+.wx-scope{font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+.wx-key{font-size:14px;line-height:1.5;}
+.wx-sub{font-size:12px;color:var(--txt);margin-top:4px;}
+.wx-warn{font-size:11.5px;color:var(--amb);background:var(--amb-bg);border-radius:var(--r);padding:7px 9px;margin-top:8px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -619,6 +625,13 @@ a.btn.green{color:#fff;}
     <div class="sec-title">🔄 발주 주기 자동 분석</div>
     <div class="card"><div class="card-bd" id="cycle-analysis-body"></div></div>
   </div>
+
+  <!-- 날씨 × 발주 -->
+  <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;">
+    <span>🌦 날씨 × 발주 (전사 카페, 주 단위)</span>
+    <button class="btn xs" onclick="loadWeatherAnalysis()">불러오기</button>
+  </div>
+  <div class="card"><div class="card-bd" id="wx-body"><div class="no-data">[불러오기]를 누르면 시트의 매출·날씨 자료로 분석합니다. 담당자 필터와 관계없이 전체 기준입니다.</div></div></div>
 
   <!-- AI 인사이트 -->
   <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;">
@@ -2128,6 +2141,7 @@ function renderAnalytics() {
   renderForecast(targetOrders);
   renderPeriodForecast();
   renderCycleAnalysis();
+  if (EXTRA.weather) renderWeather();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3797,7 +3811,7 @@ function openWeekOrders(wkKey, range, startISO, endISO, wNum) {
 // ═══════════════════════════════════════════════════════
 //  v30 CORE — 날짜(KST) · 인덱스 · IndexedDB · 동기화 · 예측 엔진
 // ═══════════════════════════════════════════════════════
-const APP_VERSION = '30.1.0';
+const APP_VERSION = '30.2.0';
 const APP_BUILD   = '2026-10-20';
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbya6V673E3lHwLdnABAMWIGxift-rG7vGlXc-j3aMJYs80Oc9pcJ4x7psuq8t_BI0nhsQ/exec';
 const LEGACY_API_URLS = ['https://script.google.com/macros/s/AKfycby2MgEd72vRd8OnpFgqKNLL_hUyWCIVEX-L_rCwQ9ETsShl__t6ZgwLwmJMK8PHl6Hicw/exec'];
@@ -4741,6 +4755,107 @@ function renderHomeQty(){
         </div>`).join('')}
       ${sorted.length>8?`<div style="font-size:11px;color:var(--muted);padding-top:4px;text-align:center;">외 ${sorted.length-8}곳</div>`:''}
     </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  날씨 × 발주 (전체 카페, 주 단위) — 분석탭 [불러오기]를 눌렀을 때만 시트에 요청
+// ═══════════════════════════════════════════════════════
+let _wxChart = null;
+async function loadWeatherAnalysis(){
+  const body = document.getElementById('wx-body');
+  if (!API_URL) { showToast('설정 탭에서 구글 시트를 먼저 연결하세요'); return; }
+  showLoading('날씨·매출 자료 불러오는 중...');
+  try {
+    const d = await (await fetch(apiUrl({ action:'weather' }), { cache:'no-store' })).json();
+    if (d.error) throw new Error(d.error);
+    if (!d.weeks) throw new Error('Apps Script가 이전 버전입니다. 새 Code.gs로 교체 후 새 버전으로 배포하세요');
+    EXTRA.weather = { ...d, loadedAt: new Date().toISOString() };
+    saveExtra();
+    renderWeather();
+  } catch(e) {
+    if (body) body.innerHTML = `<div class="no-data" style="color:var(--red);">불러오지 못했습니다: ${e.message}</div>`;
+  } finally { hideLoading(); }
+}
+function pearson(x, y){
+  const n = x.length; if (n < 3) return null;
+  const mx = x.reduce((a,b)=>a+b,0)/n, my = y.reduce((a,b)=>a+b,0)/n;
+  let sxy=0, sxx=0, syy=0;
+  for (let i=0;i<n;i++){ const a=x[i]-mx, b=y[i]-my; sxy+=a*b; sxx+=a*a; syy+=b*b; }
+  return (sxx && syy) ? sxy/Math.sqrt(sxx*syy) : null;
+}
+function lagCorr(x, y, lag){ const a=[], b=[]; for (let i=0;i+lag<x.length;i++){ a.push(x[i]); b.push(y[i+lag]); } return { r:pearson(a,b), n:a.length }; }
+function rWord(r){ const a=Math.abs(r); return a<0.2?'거의 관계 없음':a<0.4?'약한 관계':a<0.6?'보통 관계':'강한 관계'; }
+function renderWeather(){
+  const body = document.getElementById('wx-body');
+  const d = EXTRA.weather;
+  if (!body || !d) return;
+  const W = (d.weeks||[]).filter(w => w.cl > 0);
+  if (W.length < 8) { body.innerHTML = `<div class="no-data">날씨와 매출이 함께 있는 주가 ${W.length}주뿐이라 분석하기 어렵습니다 (최소 8주).</div>`; return; }
+  const y = W.map(w => w.kg / w.cl), x = W.map(w => w.ta), yMean = y.reduce((a,b)=>a+b,0)/y.length;
+  const years = [...new Set(W.map(w => w.w.slice(0,4)))];
+  // 같은 달끼리 평균을 빼서 '계절'을 걷어낸 값 (2개 연도 이상일 때만 의미)
+  const byM = {};
+  W.forEach((w,i) => { const m=w.w.slice(5,7); (byM[m] ||= { x:[], y:[], yrs:new Set() }); byM[m].x.push(x[i]); byM[m].y.push(y[i]); byM[m].yrs.add(w.w.slice(0,4)); });
+  const multiYear = Object.values(byM).filter(v => v.yrs.size >= 2).length >= 6;
+  const mAvg = {}; Object.entries(byM).forEach(([m,v]) => mAvg[m] = { x:v.x.reduce((a,b)=>a+b,0)/v.x.length, y:v.y.reduce((a,b)=>a+b,0)/v.y.length });
+  const ax = W.map((w,i) => x[i] - mAvg[w.w.slice(5,7)].x), ay = W.map((w,i) => y[i] - mAvg[w.w.slice(5,7)].y);
+  const raw = [0,1,2].map(l => lagCorr(x, y, l));
+  const anom = [0,1,2].map(l => lagCorr(ax, ay, l));
+  const best = (multiYear ? anom : raw).reduce((b,c,i) => (c.r!=null && (b.r==null || Math.abs(c.r)>Math.abs(b.r))) ? { ...c, lag:i } : b, { r:null });
+  const sig = r => r!=null && Math.abs(r) > 2/Math.sqrt(W.length);
+  // 기온 1℃ 이상 따뜻한 주의 거래처당 발주량 변화 (계절 제거 후 기울기)
+  let slopePct = null;
+  if (multiYear) { const sxx = ax.reduce((s,v)=>s+v*v,0); if (sxx) slopePct = ax.reduce((s,v,i)=>s+v*ay[i],0)/sxx / yMean * 100; }
+  // 기온 구간
+  const bins = [[-99,0,'0℃ 미만'],[0,5,'0~5℃'],[5,10,'5~10℃'],[10,15,'10~15℃'],[15,20,'15~20℃'],[20,25,'20~25℃'],[25,99,'25℃ 이상']]
+    .map(([a,b,l]) => { const v = W.map((w,i)=>({t:x[i],y:y[i]})).filter(o => o.t>=a && o.t<b); return { l, n:v.length, y: v.length ? v.reduce((s,o)=>s+o.y,0)/v.length : null }; })
+    .filter(b => b.n);
+  const bMax = Math.max(...bins.map(b => b.y));
+  // 비 많은 주
+  const rainy = W.map((w,i)=>({r:w.rnDays>=3, v: multiYear ? ay[i] : y[i]}));
+  const avgOf = a => a.length ? a.reduce((s,o)=>s+o.v,0)/a.length : null;
+  const rY = avgOf(rainy.filter(o=>o.r)), dY = avgOf(rainy.filter(o=>!o.r));
+  const rainTxt = (rY==null||dY==null) ? '비교할 주가 부족합니다' :
+    multiYear ? `비 3일 이상 주는 같은 달 평균보다 거래처당 ${r1(rY-dY)}kg (${Math.round((rY-dY)/yMean*100)}%) ${rY>=dY?'많음':'적음'}`
+              : `비 3일 이상 주 ${r1(rY)}kg vs 그 외 ${r1(dY)}kg (계절 섞임)`;
+  const m = d.meta || {};
+  const rCell = c => c.r==null ? '-' : `<b style="color:${sig(c.r)?'var(--txt)':'var(--muted)'}">${c.r.toFixed(2)}</b>`;
+  body.innerHTML = `
+    <div class="wx-scope">서울(${d.station}) 기온 · ${W[0].w} ~ ${W[W.length-1].w} · ${W.length}주 · ${years.length}개 연도 · 거래처당 주간 발주량 기준</div>
+    <div class="wx-key">${best.r==null ? '상관을 계산할 수 없습니다' :
+      `${multiYear ? '계절을 걷어낸 뒤' : '계절이 섞인 상태에서'} 기온과 발주량은 <b>${rWord(best.r)}</b> (r=${best.r.toFixed(2)}, ${best.lag===0?'같은 주':best.lag+'주 뒤'})${sig(best.r)?'':' · 통계적으로 확실하지 않음'}`}</div>
+    ${slopePct!=null ? `<div class="wx-sub">같은 달 평년보다 1℃ 따뜻한 주 → 거래처당 발주량 ${slopePct>=0?'+':''}${slopePct.toFixed(1)}%</div>` : ''}
+    ${!multiYear ? `<div class="wx-warn">2026년 자료만 있어 '여름이라서'와 '더워서'를 구분할 수 없습니다. 매출실적_과거 탭에 2024~2025년 자료를 넣으면 계절을 걷어낸 분석으로 바뀝니다.</div>` : ''}
+    <div style="position:relative;height:200px;margin:10px 0;"><canvas id="wx-chart"></canvas></div>
+    <table class="hq-table">
+      <thead><tr><th>상관계수 r</th><th>같은 주</th><th>1주 뒤</th><th>2주 뒤</th></tr></thead>
+      <tbody>
+        <tr><td>기온 ↔ 발주량</td><td>${rCell(raw[0])}</td><td>${rCell(raw[1])}</td><td>${rCell(raw[2])}</td></tr>
+        ${multiYear ? `<tr><td>계절 제거 후</td><td>${rCell(anom[0])}</td><td>${rCell(anom[1])}</td><td>${rCell(anom[2])}</td></tr>` : ''}
+      </tbody>
+    </table>
+    <div class="hq-sub">기온 구간별 거래처당 주간 발주량</div>
+    <div class="bar-wrap" style="margin-bottom:10px;">${bins.map(b => `
+      <div class="bar-row"><div class="bar-lbl" style="width:62px">${b.l}</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(b.y/bMax*100)}%;background:var(--grn)"><span>${r1(b.y)}</span></div></div>
+        <div class="bar-num" style="width:44px">${b.n}주</div></div>`).join('')}</div>
+    <div class="wx-sub">${rainTxt}</div>
+    <div class="pf-note" style="margin-top:8px;">r은 -1~1 사이 값입니다. 0.2 미만은 관계가 거의 없다는 뜻이고, 회색 숫자는 표본이 적어 우연일 수 있는 값입니다(|r| ≤ 2/√주수). 원두는 카페가 판매 후 1~2주 주기로 주문하므로 '1주 뒤' 값을 함께 봅니다.
+    자료: 매출 ${(m.current||0).toLocaleString()}행(발주 탭)${m.past?` + 과거 ${m.past.toLocaleString()}행`:''}${m.pastError?` · ⚠ ${m.pastError}`:''} · 불러온 시각 ${new Date(d.loadedAt).toLocaleString('ko-KR')}</div>`;
+  if (typeof Chart !== 'undefined') {
+    if (_wxChart) { _wxChart.destroy(); _wxChart = null; }
+    const cv = document.getElementById('wx-chart');
+    if (cv) _wxChart = new Chart(cv, {
+      type:'line',
+      data:{ labels: W.map(w => w.w.slice(2).replace(/-/g,'.')),
+        datasets:[
+          { label:'거래처당 발주량(kg)', data:y.map(v=>r1(v)), borderColor:'#1D9E75', backgroundColor:'#1D9E75', yAxisID:'y', pointRadius:0, borderWidth:2, tension:.3 },
+          { label:'평균기온(℃)', data:x, borderColor:'#E24B4A', backgroundColor:'#E24B4A', yAxisID:'y1', pointRadius:0, borderWidth:1.5, borderDash:[4,3], tension:.3 } ] },
+      options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ labels:{ boxWidth:10, font:{ size:10 } } } },
+        scales:{ x:{ ticks:{ maxTicksLimit:8, font:{ size:9 } } }, y:{ position:'left', ticks:{ font:{ size:9 } } }, y1:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:{ size:9 } } } } }
+    });
+  }
 }
 
 
