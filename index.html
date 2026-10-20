@@ -4767,7 +4767,7 @@ async function loadWeatherAnalysis(){
   showLoading('날씨·매출 자료 불러오는 중...');
   try {
     const d = await (await fetch(apiUrl({ action:'weather' }), { cache:'no-store' })).json();
-    if (d.error) throw new Error(d.error);
+    if (d.error) throw new Error(/unknown action|알 수 없는 요청/i.test(d.error) ? '앱이 연결된 웹앱이 아직 이전 코드입니다. Apps Script에서 배포 관리 → 기존 웹앱 연필 → 버전 \'새 버전\' → 배포를 해주세요. (설정 탭 URL이 그 웹앱 URL과 같은지도 확인)' : d.error);
     if (!d.weeks) throw new Error('Apps Script가 이전 버전입니다. 새 Code.gs로 교체 후 새 버전으로 배포하세요');
     EXTRA.weather = { ...d, loadedAt: new Date().toISOString() };
     saveExtra();
