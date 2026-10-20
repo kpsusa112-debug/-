@@ -337,6 +337,31 @@ a.btn{text-decoration:none;color:inherit;}
 a.btn.green{color:#fff;}
 :focus-visible{outline:2px solid var(--grn);outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+
+/* v30.1: 동기화 안내 · 월별 매출 카드 */
+.sync-hint{font-size:12px;color:var(--amb);background:var(--amb-bg);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.hq-chips{padding:0 14px 4px;flex-wrap:wrap;}
+.hq-chips .chip{padding:5px 11px;font-size:11.5px;}
+.chip-none{border-style:dashed;}
+.hq-scope{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;}
+.hq-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--bdr);text-align:center;}
+.hq-stats b{display:block;font-size:19px;font-weight:800;}
+.hq-stats small{font-size:11px;font-weight:400;margin-left:1px;}
+.hq-stats span{font-size:11px;color:var(--muted);}
+.hq-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:12px;}
+.hq-table th{font-size:10.5px;color:var(--muted);font-weight:700;text-align:right;padding:4px 2px;border-bottom:1px solid var(--bdr2);}
+.hq-table th:first-child,.hq-table td:first-child{text-align:left;}
+.hq-table td{text-align:right;padding:6px 2px;border-bottom:1px solid var(--bdr);font-variant-numeric:tabular-nums;}
+.hq-table td small{color:var(--muted);font-size:10.5px;}
+.hq-none td{color:var(--red);background:var(--red-bg);}
+.hq-sub{font-size:11px;font-weight:700;color:var(--muted);margin:4px 0 6px;}
+.hq-months{display:flex;gap:6px;align-items:flex-end;margin-bottom:12px;}
+.hq-m{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;border-radius:8px;color:var(--txt);}
+.hq-m.on{background:var(--grn-bg);}
+.hq-mbar{width:60%;background:var(--grn);border-radius:4px 4px 0 0;opacity:.55;}
+.hq-m.on .hq-mbar{opacity:1;}
+.hq-mv{font-size:9.5px;font-weight:700;color:var(--amb);white-space:nowrap;}
+.hq-ml{font-size:10.5px;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -399,7 +424,7 @@ a.btn.green{color:#fff;}
   <div class="sec-title">👤 담당자별 발주량</div>
   <div class="card"><div class="card-bd"><div class="bar-wrap" id="home-managers"></div></div></div>
   <!-- 총 발주량 필터 카드 -->
-  <div class="sec-title">📦 총 발주량</div>
+  <div class="sec-title">📦 월별 매출 · 발주량 <span style="font-weight:500;text-transform:none;letter-spacing:0;">(상단 필터와 별개, 담당자 복수 선택)</span></div>
   <div class="card">
     <div class="card-hd" style="padding-bottom:8px;">
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
@@ -407,7 +432,7 @@ a.btn.green{color:#fff;}
           <option value="month">월 단위</option>
           <option value="week">주 단위</option>
         </select>
-        <select id="hq-month" onchange="renderHomeQty()" style="flex:1;padding:5px 8px;font-size:12px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--surf);color:var(--txt);">
+        <select id="hq-month" onchange="setHqMonth(this.value)" style="flex:1;padding:5px 8px;font-size:12px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--surf);color:var(--txt);">
         </select>
         <select id="hq-week" onchange="renderHomeQty()" style="padding:5px 8px;font-size:12px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--surf);color:var(--txt);display:none;">
           <option value="1">1주 (1~7일)</option>
@@ -418,6 +443,7 @@ a.btn.green{color:#fff;}
         </select>
       </div>
     </div>
+    <div id="hq-mgrs" class="chips-x hq-chips"></div>
     <div class="card-bd" id="home-qty-summary"></div>
   </div>
 </div>
@@ -677,12 +703,8 @@ a.btn.green{color:#fff;}
     <div id="v3-health"><div class="no-data">불러오는 중…</div></div>
   </div>
   <div class="setup-card">
-    <h3>⏱ 자동 동기화</h3>
-    <select id="sync-interval" onchange="setSyncInterval()" style="width:100%;padding:10px;font-size:14px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--surf);color:var(--txt);">
-      <option value="0" selected>수동</option>
-      <option value="43200">12시간마다</option>
-      <option value="86400">24시간마다</option>
-    </select>
+    <h3>⏱ 동기화 방식</h3>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;">앱을 열 때 자동으로 받지 않습니다. 위 [🔄 동기화] 버튼을 누를 때만 시트에서 받아옵니다. 시트가 바뀌지 않았으면 데이터를 다시 받지 않아 빠릅니다.</div>
     <div style="margin-top:8px;font-size:12px;color:var(--muted);">마지막: <span id="last-sync">-</span></div>
   </div>
   <div class="setup-card">
@@ -918,7 +940,8 @@ function populateManagerDropdown() {
   if (!sel) return;
   const managers = [...new Set(clients.map(c => c.manager||'').filter(Boolean))].sort();
   sel.innerHTML = '<option value="">전체 담당자</option>' +
-    managers.map(m => `<option value="${m}"${m===managerFilter?' selected':''}>${m}</option>`).join('');
+    managers.map(m => `<option value="${m}"${m===managerFilter?' selected':''}>${m}</option>`).join('') +
+    `<option value="__none__"${managerFilter==='__none__'?' selected':''}>담당자 미지정</option>`;
   sel.style.color       = managerFilter ? 'var(--grn-dk)' : 'var(--txt)';
   sel.style.borderColor = managerFilter ? 'var(--grn)'    : 'var(--bdr2)';
   sel.style.fontWeight  = managerFilter ? '700'           : '600';
@@ -930,6 +953,7 @@ function setManagerFilter(val) {
 }
 function filterByManager(list) {
   if (!managerFilter) return list;
+  if (managerFilter === '__none__') return list.filter(c => !String(c.manager||'').trim());
   return list.filter(c => (c.manager||'') === managerFilter);
 }
 
@@ -1332,101 +1356,7 @@ function _renderHomeBase() {
 // ═══════════════════════════════════════════════════════
 //  HOME: 총 발주량 월/주 필터
 // ═══════════════════════════════════════════════════════
-function renderHomeQty() {
-  const modeSel = document.getElementById('hq-mode');
-  const monthSel = document.getElementById('hq-month');
-  const weekSel = document.getElementById('hq-week');
-  if (!modeSel) return;
-  const mode = modeSel.value; // 'month' | 'week'
 
-  // 월 목록 초기화
-  const allMonths = [...new Set(orders.map(o=>o.date?.slice(0,7)).filter(Boolean))].sort().reverse();
-  const now = new Date();
-  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  if (allMonths.length === 0) allMonths.push(curMonth);
-  const prevMonth = monthSel.value;
-  monthSel.innerHTML = allMonths.map(m=>`<option value="${m}"${m===(prevMonth||curMonth)?' selected':''}>${m.replace('-','년 ')}월</option>`).join('');
-  const selMonth = monthSel.value || curMonth;
-
-  // 주 단위 표시 토글
-  weekSel.style.display = mode === 'week' ? 'block' : 'none';
-
-  const baseOrders = filterOrdersByManager(orders);
-
-  let filtered;
-  let label;
-
-  if (mode === 'month') {
-    filtered = baseOrders.filter(o => o.date?.slice(0,7) === selMonth);
-    label = selMonth.replace('-','년 ')+'월';
-  } else {
-    const wk = parseInt(weekSel.value || '1');
-    const [yr, mn] = selMonth.split('-').map(Number);
-    const wkStart = (wk-1)*7 + 1;
-    const wkEnd = wk < 5 ? wk*7 : 31; // 5주는 말일까지
-    filtered = baseOrders.filter(o => {
-      if (!o.date || o.date.slice(0,7) !== selMonth) return false;
-      const day = parseInt(o.date.slice(8,10));
-      return day >= wkStart && day <= wkEnd;
-    });
-    const wkLabels = ['','1~7일','8~14일','15~21일','22~28일','29~말일'];
-    label = `${selMonth.replace('-','년 ')}월 ${wk}주 (${wkLabels[wk]})`;
-  }
-
-  const totalKg = r1(filtered.reduce((s,o)=>s+(o.qty||0),0));
-  const totalRev = filtered.reduce((s,o)=>s+(o.amount||(o.qty*o.price)||0),0);
-  const totalCnt = filtered.length;
-  const clientIds = [...new Set(filtered.map(o=>o.clientId))];
-
-  // 거래처별 집계 (kg + 매출)
-  const byClient = {};
-  filtered.forEach(o => {
-    const c = clients.find(x=>x.id===o.clientId);
-    const name = c?.name || o.clientName || '미등록';
-    if (!byClient[name]) byClient[name] = {kg:0, rev:0};
-    byClient[name].kg += o.qty||0;
-    byClient[name].rev += o.amount||(o.qty*o.price)||0;
-  });
-  const sorted = Object.entries(byClient).sort((a,b)=>b[1].kg-a[1].kg);
-  const maxKg = sorted[0]?.[1].kg || 1;
-
-  const el = document.getElementById('home-qty-summary');
-  if (!el) return;
-
-  if (!filtered.length) {
-    el.innerHTML = `<div class="no-data">${label} 발주 없음</div>`;
-    return;
-  }
-
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bdr);">
-      <div style="text-align:center;">
-        <div style="font-size:20px;font-weight:800;color:var(--grn-dk)">${totalKg}<span style="font-size:12px;font-weight:400">kg</span></div>
-        <div style="font-size:11px;color:var(--muted)">총 발주량</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="font-size:20px;font-weight:800;color:var(--amb)">₩${fmtKRW(totalRev)}</div>
-        <div style="font-size:11px;color:var(--muted)">총 매출</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="font-size:18px;font-weight:800;color:var(--txt)">${totalCnt}<span style="font-size:11px;font-weight:400">건</span></div>
-        <div style="font-size:11px;color:var(--muted)">발주 건수</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="font-size:18px;font-weight:800;color:var(--txt)">${clientIds.length}<span style="font-size:11px;font-weight:400">곳</span></div>
-        <div style="font-size:11px;color:var(--muted)">거래처 수</div>
-      </div>
-    </div>
-    <div class="bar-wrap">
-      ${sorted.slice(0,8).map(([name,v],i)=>`
-        <div class="bar-row">
-          <div class="bar-lbl">${name}</div>
-          <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v.kg/maxKg*100)}%;background:${BC[i%BC.length]}"><span>${v.kg}</span></div></div>
-          <div class="bar-num" style="min-width:90px;text-align:right;">${v.kg}kg<br><span style="font-size:10px;color:var(--amb);font-weight:600;">₩${fmtKRW(v.rev)}</span></div>
-        </div>`).join('')}
-      ${sorted.length>8?`<div style="font-size:11px;color:var(--muted);padding-top:4px;text-align:center;">외 ${sorted.length-8}곳</div>`:''}
-    </div>`;
-}
 // ─── 검색 유틸 ───────────────────────────────────────────
 function fuzzyMatch(str, q) {
   if (!q) return true;
@@ -2152,7 +2082,7 @@ function renderAnalytics() {
   const targetOrders = analyticsClient
     ? orders.filter(o=>o.clientId===analyticsClient.id)  // 특정 거래처는 전체 발주에서
     : baseOrders;
-  const mgrLabel = managerFilter ? `[${managerFilter}] ` : '';
+  const mgrLabel = managerFilter ? `[${mgrName(managerFilter)}] ` : '';
   const label = analyticsClient ? analyticsClient.name+' ' : mgrLabel;
   document.getElementById('a-month-title').textContent = label+'월별 발주 현황';
   document.getElementById('a-week-title').textContent = label+'주차별 패턴 (최근 20주)';
@@ -3867,8 +3797,8 @@ function openWeekOrders(wkKey, range, startISO, endISO, wNum) {
 // ═══════════════════════════════════════════════════════
 //  v30 CORE — 날짜(KST) · 인덱스 · IndexedDB · 동기화 · 예측 엔진
 // ═══════════════════════════════════════════════════════
-const APP_VERSION = '30.0.0';
-const APP_BUILD   = '2026-10-16';
+const APP_VERSION = '30.1.0';
+const APP_BUILD   = '2026-10-20';
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbya6V673E3lHwLdnABAMWIGxift-rG7vGlXc-j3aMJYs80Oc9pcJ4x7psuq8t_BI0nhsQ/exec';
 const LEGACY_API_URLS = ['https://script.google.com/macros/s/AKfycby2MgEd72vRd8OnpFgqKNLL_hUyWCIVEX-L_rCwQ9ETsShl__t6ZgwLwmJMK8PHl6Hicw/exec'];
 (function(){
@@ -3931,9 +3861,12 @@ function lastOrder(cid){
   for (let i=r.length-1; i>=0; i--) if ((r[i].qty||0) > 0) return r[i];
   return r[r.length-1] || null;
 }
+const NO_MGR = '__none__';
+function mgrOfOrder(o){ return String(getClient(o.clientId)?.manager || '').trim() || NO_MGR; }
+function mgrName(m){ return !m ? '전체 담당자' : m === NO_MGR ? '담당자 미지정' : m; }
 function filterOrdersByManager(list){
   let result = list;
-  if (managerFilter) result = result.filter(o => (getClient(o.clientId)?.manager||'') === managerFilter);
+  if (managerFilter) result = result.filter(o => mgrOfOrder(o) === managerFilter);
   if (monthFilter)   result = result.filter(o => o.date?.slice(0,7) === monthFilter);
   return result;
 }
@@ -3954,7 +3887,7 @@ function normalizeOrder(o){
   const amount = parseNum(o.amount) || parseNum(o.revenue) || Math.round(qty*price);
   let cid = o.clientId;
   if (cid !== '' && cid != null && !isNaN(Number(cid))) cid = Number(cid);
-  return { id:o.id, clientId:cid, clientName:o.clientName||'', date:normalizeDate(o.date), qty, price, amount,
+  return { id:o.id, clientId:cid, clientName:o.clientName||'', date:normalizeDate(o.date), qty, price, amount, calc:Math.round(qty*price),
            bean: mapBean(String(o.bean||'').trim()), memo:o.memo||'', updatedAt:o.updatedAt||'' };
 }
 function normalizeClientV3(c){
@@ -4038,7 +3971,14 @@ async function apiPost(body){
     return j;
   } catch(e) { showToast('⚠ 시트에 저장하지 못했습니다 (오프라인). 기기에는 저장됨'); return null; }
 }
+function setSyncInterval(){ if (syncTimer) { clearInterval(syncTimer); syncTimer = null; } }   // 자동 동기화 사용 안 함
+function syncAgeLabel(){
+  if (!EXTRA.syncedAt) return '동기화 전';
+  const d = new Date(EXTRA.syncedAt), days = daysAgo(d.toYMD());
+  return days <= 0 ? `오늘 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : `${days}일 전`;
+}
 function _lastSyncLabel(){
+  const l = document.getElementById('sync-label'); if (l && EXTRA.syncedAt) l.textContent = syncAgeLabel();
   const el = document.getElementById('last-sync');
   if (el) el.textContent = EXTRA.syncedAt ? new Date(EXTRA.syncedAt).toLocaleString('ko-KR') : '-';
 }
@@ -4052,7 +3992,7 @@ async function syncNow(force){
     if (data.error) throw new Error(data.error);
     if (data.unchanged) {
       EXTRA.syncedAt = new Date().toISOString(); saveExtra();
-      setSyncBadge('live'); _lastSyncLabel(); showToast('✅ 시트 변경 없음 — 최신 상태');
+      setSyncBadge('live'); _lastSyncLabel(); renderToday(); showToast('✅ 시트 변경 없음 — 최신 상태');
       return;
     }
     if (Array.isArray(data.productMap)) { EXTRA.productMap = data.productMap; _beanMap = null; }
@@ -4118,7 +4058,6 @@ async function connectGoogle(){
       showResult('⚠ 이전 버전 Apps Script에 연결됨 — 등급·목표·방문기록은 Code.gs 교체 후 표시됩니다', 'red');
     } else throw new Error(p.error || '응답 형식을 알 수 없습니다');
     await syncNow(true);
-    setSyncInterval();
   } catch(e) { showResult('❌ 연결 실패: ' + e.message, 'red'); }
 }
 
@@ -4336,6 +4275,23 @@ function renderPeriodForecast(){
       totKg:act.kg+expKg, totRev:act.rev+expRev, nextDate, dday: nextDate ? diffDays(today, nextDate) : null
     });
   }
+  // 확정 실적은 '홈' 합계와 같은 기준: 종료 거래처·미등록 거래처 발주도 포함 (예측은 거래중만)
+  if (!analyticsClient && S <= today) {
+    const seen = new Set(rows.map(r => String(r.id)));
+    const extra = new Map(), endA = E < today ? E : today;
+    for (const o of orders) {
+      if (!o.date || o.date < S || o.date > endA) continue;
+      const k = String(o.clientId); if (seen.has(k)) continue;
+      const c = getClient(o.clientId);
+      if (managerFilter && mgrOfOrder(o) !== managerFilter) continue;
+      if (pfGrade && (c?.grade||'') !== pfGrade) continue;
+      let r = extra.get(k);
+      if (!r) { r = { id:o.clientId, name:(c?.name || o.clientName || '미등록') + (c ? (c.status==='inactive' ? ' (종료)' : '') : ' (미등록)'), manager:c?.manager || '미지정', grade:c?.grade||'',
+        cycle:null, conf:'single', churn:0, pActive:1, actKg:0, actRev:0, actCnt:0, expKg:0, expRev:0, expCnt:0, totKg:0, totRev:0, nextDate:'', dday:null, extra:true }; extra.set(k, r); }
+      r.actKg += o.qty||0; r.actRev += o.amount||(o.qty*o.price)||0; r.totKg = r.actKg; r.totRev = r.actRev;
+    }
+    rows.push(...extra.values());
+  }
   if (periodForecastSort === 'urgent') rows.sort((a,b) => (a.dday ?? 999) - (b.dday ?? 999));
   else if (periodForecastSort === 'churn') rows.sort((a,b) => b.churn - a.churn);
   else rows.sort((a,b) => b.totRev - a.totRev);
@@ -4353,7 +4309,7 @@ function renderPeriodForecast(){
   const confDot = r => { const c = CONF_LABEL[r.conf] || CONF_LABEL.single; return `<span style="color:${c[1]};font-weight:700;">● ${c[0]}</span>`; };
 
   body.innerHTML = `
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${S} ~ ${E} (${periodDays}일) · ${rows.length}곳${pfGrade?` · ${pfGrade}등급`:''}${risky?` · <span style="color:var(--red);">이탈 위험 ${risky}곳</span>`:''}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${managerFilter?mgrName(managerFilter)+' · ':''}${S} ~ ${E} (${periodDays}일) · ${rows.length}곳${pfGrade?` · ${pfGrade}등급`:''}${risky?` · <span style="color:var(--red);">이탈 위험 ${risky}곳</span>`:''}</div>
     <div class="pf-total">
       <div class="pf-total-kg">${Math.round(aKg+eKg).toLocaleString()}<small>kg</small></div>
       <div class="pf-total-rev">₩${fmtKRW(aRev+eRev)}</div>
@@ -4371,7 +4327,7 @@ function renderPeriodForecast(){
           <div style="flex:1;min-width:0;">
             <div class="pf-name">${r.name}${r.grade?` <span class="g-badge g-${r.grade}">${r.grade}</span>`:''}${r.churn>=60?` <span class="churn-badge">이탈위험 ${r.churn}</span>`:''}</div>
             <div class="pf-sub">${r.manager}${r.cycle?` · ${r.cycle}일 주기`:''}${r.nextDate?` · 다음 ${fmtMD(r.nextDate)}${r.dday!=null?(r.dday>=0?` D-${r.dday}`:` ${-r.dday}일 지남`):''}`:''}</div>
-            <div class="pf-sub">${confDot(r)}${r.pActive<1?` · 발주확률 ${Math.round(r.pActive*100)}%`:''}</div>
+            <div class="pf-sub">${r.extra ? '실적만 집계 (예측 제외)' : confDot(r) + (r.pActive<1?` · 발주확률 ${Math.round(r.pActive*100)}%`:'')}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:13px;font-weight:800;color:var(--grn-dk);">${r1(r.totKg)}kg</div>
@@ -4526,7 +4482,11 @@ function renderToday(){
       ${list.length > 5 ? `<button class="td-more" onclick="toggleToday('${k}')">${_todayOpen[k] ? '접기' : `${list.length-5}곳 더 보기`}</button>` : ''}
     </div>`;
   };
-  el.innerHTML = `<div class="card td-card"><div class="card-bd">
+  const age = EXTRA.syncedAt ? daysAgo(new Date(EXTRA.syncedAt).toYMD()) : null;
+  const syncHint = !EXTRA.syncedAt
+    ? `<div class="sync-hint">아직 시트 데이터를 받지 않아 예시 데이터가 보입니다. <button class="btn xs green" onclick="syncNow()">지금 동기화</button></div>`
+    : age >= 3 ? `<div class="sync-hint">마지막 동기화 ${age}일 전 · 최신 실적이 아닐 수 있습니다. <button class="btn xs" onclick="syncNow()">동기화</button></div>` : '';
+  el.innerHTML = syncHint + `<div class="card td-card"><div class="card-bd">
     ${group('due', '발주 예정 · 3일 안', 'var(--grn-dk)', due, x => {
       const dd = diffDays(today, x.nd);
       return row(x.c, `${x.c.manager||'-'} · ${fmtMD(x.nd)} ${dd>0?`D-${dd}`:dd===0?'오늘':`${-dd}일 지남`}${visitNote(x.c.id)}`, `${r1(x.f.qty)}kg`);
@@ -4649,7 +4609,8 @@ async function renderHealth(){
     <div class="hl-row"><span>일요일</span><b>${sundayClosed() ? '휴무로 판단' : '영업일로 계산'}</b></div>
     <div class="hl-row"><span>매핑 안 된 제품명</span><b>${unmapped.length ? unmapped.length+'개' : '없음'}</b></div>
     ${unmapped.length ? `<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:4px;">${unmapped.slice(0,12).join(', ')}${unmapped.length>12?' …':''}<br>시트 '제품매핑' 탭의 원두 칸을 채우면 다음 동기화부터 합쳐집니다.</div>` : ''}
-    <div class="hl-row"><span>버전</span><b>v${APP_VERSION} (${APP_BUILD})</b></div>`;
+    <div class="hl-row"><span>버전</span><b>v${APP_VERSION} (${APP_BUILD})</b></div>
+    ${revenueCheckHTML()}`;
 }
 
 // ── 시작 ──
@@ -4661,8 +4622,125 @@ async function bootV3(){
   const tokEl = document.getElementById('api-token'); if (tokEl) tokEl.value = localStorage.getItem('crm_token') || '';
   _lastSyncLabel();
   renderHome();
-  if (API_URL) { document.getElementById('api-url').value = API_URL; syncNow().then(() => setSyncInterval()); }
-  else setSyncBadge('local');
+  // 자동 동기화 없음 — 설정 탭의 [동기화] 버튼으로만 받음
+  if (API_URL) document.getElementById('api-url').value = API_URL;
+  setSyncBadge(EXTRA.syncedAt ? 'live' : 'local');
+  if (EXTRA.syncedAt) { const l = document.getElementById('sync-label'); if (l) l.textContent = syncAgeLabel(); }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  매출 차이 점검 — 홈/분석/이전 버전 숫자가 왜 다른지 실제 데이터로 표시
+// ═══════════════════════════════════════════════════════
+function revenueCheckHTML(){
+  const ym = todayYMD().slice(0,7);
+  let all=0, calcAll=0, inact=0, unreg=0, nomgr=0, diffRows=0, diffSum=0;
+  for (const o of orders) {
+    const a = o.amount||0, c = o.calc ?? Math.round((o.qty||0)*(o.price||0));
+    if (a !== c) { diffRows++; diffSum += a - c; }
+    if (!o.date || o.date.slice(0,7) !== ym) continue;
+    all += a; calcAll += c;
+    const cl = getClient(o.clientId);
+    if (!cl) unreg += a; else if (cl.status === 'inactive') inact += a;
+    if (mgrOfOrder(o) === NO_MGR) nomgr += a;
+  }
+  const W = v => '₩' + fmtKRW(v);
+  return `<div style="margin-top:12px;font-size:12px;font-weight:800;">이번 달 매출이 화면마다 다른 이유</div>
+    <div class="hl-row"><span>홈 '월별 매출' (전체 발주)</span><b>${W(all)}</b></div>
+    <div class="hl-row"><span>└ 종료 거래처 발주</span><b>${W(inact)}</b></div>
+    <div class="hl-row"><span>└ 거래처 탭에 없는 거래처</span><b>${W(unreg)}</b></div>
+    <div class="hl-row"><span>└ 담당자 미지정</span><b>${W(nomgr)}</b></div>
+    <div class="hl-row"><span>이전 버전 방식 (수량×단가)</span><b>${W(calcAll)}</b></div>
+    <div class="hl-row"><span>매출실적 금액 ≠ 수량×단가 (전체 기간)</span><b>${diffRows.toLocaleString()}행 · ${diffSum>=0?'+':''}${W(diffSum)}</b></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  홈: 월별 매출 · 발주량 (담당자 복수 선택)
+// ═══════════════════════════════════════════════════════
+let hqMgrs = new Set((() => { try { return JSON.parse(localStorage.getItem('crm_hq_mgrs')||'[]'); } catch(e) { return []; } })());
+function toggleHqMgr(m){
+  if (m === '*') hqMgrs.clear(); else if (hqMgrs.has(m)) hqMgrs.delete(m); else hqMgrs.add(m);
+  localStorage.setItem('crm_hq_mgrs', JSON.stringify([...hqMgrs]));
+  renderHomeQty();
+}
+let _hqMonth = '';   // 사용자가 고른 월 (없으면 이번 달)
+function setHqMonth(m){ _hqMonth = m; renderHomeQty(); }
+function renderHomeQty(){
+  const modeSel = document.getElementById('hq-mode'), monthSel = document.getElementById('hq-month'), weekSel = document.getElementById('hq-week');
+  const el = document.getElementById('home-qty-summary'), chipEl = document.getElementById('hq-mgrs');
+  if (!modeSel || !el) return;
+  const mode = modeSel.value;
+  const allMonths = [...new Set(orders.map(o => o.date?.slice(0,7)).filter(Boolean))].sort().reverse();
+  const curMonth = todayYMD().slice(0,7);
+  if (!allMonths.length) allMonths.push(curMonth);
+  const want = _hqMonth || curMonth;
+  const selMonth = allMonths.includes(want) ? want : allMonths[0];
+  monthSel.innerHTML = allMonths.map(m => `<option value="${m}"${m===selMonth?' selected':''}>${m.replace('-','년 ')}월</option>`).join('');
+  weekSel.style.display = mode === 'week' ? 'block' : 'none';
+
+  // 담당자 목록 (미지정은 맨 뒤)
+  const present = new Set(); for (const o of orders) present.add(mgrOfOrder(o));
+  const mgrs = [...present].filter(m => m !== NO_MGR).sort(); if (present.has(NO_MGR)) mgrs.push(NO_MGR);
+  for (const m of [...hqMgrs]) if (!present.has(m)) hqMgrs.delete(m);
+  if (chipEl) chipEl.innerHTML = `<span class="chip${hqMgrs.size?'':' active'}" onclick="toggleHqMgr('*')">전체</span>` +
+    mgrs.map(m => `<span class="chip${hqMgrs.has(m)?' active':''}${m===NO_MGR?' chip-none':''}" onclick="toggleHqMgr(${jsArg(m)})">${mgrName(m)}</span>`).join('');
+  const inSel = o => !hqMgrs.size || hqMgrs.has(mgrOfOrder(o));
+
+  let inRange, label;
+  if (mode === 'month') { inRange = d => d.slice(0,7) === selMonth; label = selMonth.replace('-','년 ') + '월'; }
+  else {
+    const wk = parseInt(weekSel.value || '1'), a = (wk-1)*7 + 1, b = wk < 5 ? wk*7 : 31;
+    inRange = d => d.slice(0,7) === selMonth && +d.slice(8,10) >= a && +d.slice(8,10) <= b;
+    label = `${selMonth.replace('-','년 ')}월 ${wk}주 (${['','1~7일','8~14일','15~21일','22~28일','29~말일'][wk]})`;
+  }
+  const byMgr = new Map(), byClient = new Map(), byMonth = new Map(), cids = new Set();
+  let kg=0, rev=0, cnt=0;
+  for (const o of orders) {
+    if (!o.date || !inSel(o)) continue;
+    const a = o.amount||(o.qty*o.price)||0, m = o.date.slice(0,7);
+    const bm = byMonth.get(m) || { kg:0, rev:0 }; bm.kg += o.qty||0; bm.rev += a; byMonth.set(m, bm);
+    if (!inRange(o.date)) continue;
+    kg += o.qty||0; rev += a; cnt++; cids.add(String(o.clientId));
+    const mg = mgrOfOrder(o), r = byMgr.get(mg) || { kg:0, rev:0, cnt:0, c:new Set() };
+    r.kg += o.qty||0; r.rev += a; r.cnt++; r.c.add(String(o.clientId)); byMgr.set(mg, r);
+    const cl = getClient(o.clientId), name = cl?.name || o.clientName || '미등록';
+    const bc = byClient.get(name) || { kg:0, rev:0 }; bc.kg += o.qty||0; bc.rev += a; byClient.set(name, bc);
+  }
+  const selTxt = hqMgrs.size ? [...hqMgrs].map(mgrName).join(', ') : '전체 담당자';
+  if (!cnt) { el.innerHTML = `<div class="hq-scope">${selTxt} · ${label}</div><div class="no-data">이 기간에 발주가 없습니다</div>`; return; }
+
+  const mgrRows = [...byMgr.entries()].sort((x, y) => (x[0]===NO_MGR) - (y[0]===NO_MGR) || y[1].rev - x[1].rev);
+  const months = [...byMonth.keys()].sort().slice(-6);
+  const mMax = Math.max(1, ...months.map(m => byMonth.get(m).rev));
+  const sorted = [...byClient.entries()].sort((a, b) => b[1].kg - a[1].kg), maxKg = sorted[0]?.[1].kg || 1;
+  el.innerHTML = `
+    <div class="hq-scope">${selTxt} · ${label}</div>
+    <div class="hq-stats">
+      <div><b style="color:var(--grn-dk)">${r1(kg).toLocaleString()}<small>kg</small></b><span>발주량</span></div>
+      <div><b style="color:var(--amb)">₩${fmtKRW(rev)}</b><span>매출</span></div>
+      <div><b>${cnt.toLocaleString()}<small>건</small></b><span>발주 건수</span></div>
+      <div><b>${cids.size}<small>곳</small></b><span>거래처</span></div>
+    </div>
+    <table class="hq-table">
+      <thead><tr><th>담당자</th><th>발주량</th><th>매출</th><th>비중</th></tr></thead>
+      <tbody>${mgrRows.map(([m, r]) => `<tr${m===NO_MGR?' class="hq-none"':''}><td>${mgrName(m)}<small> ${r.c.size}곳</small></td><td>${r1(r.kg).toLocaleString()}kg</td><td>₩${fmtKRW(r.rev)}</td><td>${rev ? Math.round(r.rev/rev*100) : 0}%</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="hq-sub">최근 6개월 매출 (선택한 담당자)</div>
+    <div class="hq-months">${months.map(m => { const v = byMonth.get(m); return `
+      <button class="hq-m${m===selMonth?' on':''}" onclick="setHqMonth('${m}')" title="${m} ₩${fmtKRW(v.rev)} · ${r1(v.kg)}kg">
+        <span class="hq-mbar" style="height:${Math.max(4, Math.round(v.rev/mMax*64))}px"></span>
+        <span class="hq-mv">${fmtKRW(v.rev)}</span><span class="hq-ml">${+m.slice(5)}월</span>
+      </button>`; }).join('')}</div>
+    <div class="hq-sub">거래처 순위 (발주량)</div>
+    <div class="bar-wrap">
+      ${sorted.slice(0,8).map(([name, v], i) => `
+        <div class="bar-row">
+          <div class="bar-lbl">${name}</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v.kg/maxKg*100)}%;background:${BC[i%BC.length]}"><span>${r1(v.kg)}</span></div></div>
+          <div class="bar-num" style="min-width:90px;text-align:right;">${r1(v.kg)}kg<br><span style="font-size:10px;color:var(--amb);font-weight:600;">₩${fmtKRW(v.rev)}</span></div>
+        </div>`).join('')}
+      ${sorted.length>8?`<div style="font-size:11px;color:var(--muted);padding-top:4px;text-align:center;">외 ${sorted.length-8}곳</div>`:''}
+    </div>`;
 }
 
 
