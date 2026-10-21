@@ -3811,10 +3811,11 @@ function openWeekOrders(wkKey, range, startISO, endISO, wNum) {
 // ═══════════════════════════════════════════════════════
 //  v30 CORE — 날짜(KST) · 인덱스 · IndexedDB · 동기화 · 예측 엔진
 // ═══════════════════════════════════════════════════════
-const APP_VERSION = '30.2.0';
-const APP_BUILD   = '2026-10-20';
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbya6V673E3lHwLdnABAMWIGxift-rG7vGlXc-j3aMJYs80Oc9pcJ4x7psuq8t_BI0nhsQ/exec';
-const LEGACY_API_URLS = ['https://script.google.com/macros/s/AKfycby2MgEd72vRd8OnpFgqKNLL_hUyWCIVEX-L_rCwQ9ETsShl__t6ZgwLwmJMK8PHl6Hicw/exec'];
+const APP_VERSION = '30.3.0';
+const APP_BUILD   = '2026-10-21';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbx1Tqel3145jjoGOZzGRXGiCQAoV_Rx3QniZjXVoGGXms_rnWkCOp1ynDEGUCoHxC2zBA/exec';
+const LEGACY_API_URLS = ['https://script.google.com/macros/s/AKfycby2MgEd72vRd8OnpFgqKNLL_hUyWCIVEX-L_rCwQ9ETsShl__t6ZgwLwmJMK8PHl6Hicw/exec',
+  'https://script.google.com/macros/s/AKfycbya6V673E3lHwLdnABAMWIGxift-rG7vGlXc-j3aMJYs80Oc9pcJ4x7psuq8t_BI0nhsQ/exec'];
 (function(){
   const s = localStorage.getItem('crm_api');
   if (!s || LEGACY_API_URLS.includes(s)) { localStorage.setItem('crm_api', DEFAULT_API_URL); API_URL = DEFAULT_API_URL; }
@@ -3889,20 +3890,38 @@ function avgCycleDays(cid){ const f=forecastClient(cid, tomorrowYMD()); return f
 function isODActual(c){ const f=forecastClient(c.id, tomorrowYMD()); return !!(f && f.cycle && f.ratio > 1.5); }
 
 // ── 제품명 → 원두 매핑 ──
-let _beanMap = null;
-function mapBean(b){
-  if (!b) return b;
-  if (!_beanMap) _beanMap = new Map((EXTRA.productMap||[]).map(x => [String(x.product).trim(), String(x.bean).trim()]));
-  return _beanMap.get(b) || b;
+let _beanMap = null, _unitMap = null;
+function _buildMaps(){
+  _beanMap = new Map(); _unitMap = new Map();
+  for (const x of (EXTRA.productMap||[])) {
+    const p = String(x.product||'').trim(); if (!p) continue;
+    if (x.bean) _beanMap.set(p, String(x.bean).trim());
+    if (Number(x.kg) > 0) _unitMap.set(p, Number(x.kg));
+  }
+}
+function mapBean(b){ if (!b) return b; if (!_beanMap) _buildMaps(); return _beanMap.get(b) || b; }
+// 제품 1개(ea)당 kg: 제품매핑 단위중량_kg → 제품명 표기(6kg, 500g) → 1
+function unitKg(product){
+  if (!_unitMap) _buildMaps();
+  const p = String(product||'').trim();
+  if (_unitMap.has(p)) return _unitMap.get(p);
+  let m = p.match(/(\d+(?:\.\d+)?)\s*kg/i); if (m) return +m[1];
+  m = p.match(/(\d+(?:\.\d+)?)\s*g(?![a-zA-Z])/); if (m) return +m[1] / 1000;
+  return 1;
 }
 
+// 시트 수량 = 개수(ea). 앱 안의 qty = kg (ea × 단위중량). 1kg 미만 제품은 원두명에 (500g)처럼 붙여 따로 집계
 function normalizeOrder(o){
-  const qty = parseNum(o.qty), price = Math.abs(parseNum(o.price));
-  const amount = parseNum(o.amount) || parseNum(o.revenue) || Math.round(qty*price);
+  const product = String(o.product ?? o.bean ?? '').trim();
+  const ea = parseNum(o.ea ?? o.qty), price = Math.abs(parseNum(o.price));
+  const unit = unitKg(product), qty = Math.round(ea * unit * 1000) / 1000;
+  let bean = mapBean(product);
+  if (bean && unit < 1 && !/\d\s*g\b|\d\s*g\)/i.test(bean)) bean = `${bean} (${Math.round(unit*1000)}g)`;
+  const amount = parseNum(o.amount) || parseNum(o.revenue) || Math.round(ea*price);
   let cid = o.clientId;
   if (cid !== '' && cid != null && !isNaN(Number(cid))) cid = Number(cid);
-  return { id:o.id, clientId:cid, clientName:o.clientName||'', date:normalizeDate(o.date), qty, price, amount, calc:Math.round(qty*price),
-           bean: mapBean(String(o.bean||'').trim()), memo:o.memo||'', updatedAt:o.updatedAt||'' };
+  return { id:o.id, clientId:cid, clientName:o.clientName||'', date:normalizeDate(o.date), qty, ea, unit, product, price, amount, calc:Math.round(ea*price),
+           bean, memo:o.memo||'', updatedAt:o.updatedAt||'' };
 }
 function normalizeClientV3(c){
   const n = normalizeClientRecord(c);
@@ -3934,7 +3953,7 @@ async function loadLocalAsync(){
   let c=null, o=null, x=null;
   try { x = await IDB.get('extra'); c = await IDB.get('clients'); o = await IDB.get('orders'); }
   catch(e){ console.warn('[v30] IndexedDB 사용 불가', e); }
-  if (x) { EXTRA = { ...EXTRA, ...x }; _beanMap = null; }
+  if (x) { EXTRA = { ...EXTRA, ...x }; _beanMap = null; _unitMap = null; }
   let legacy = false;
   if (!c || !o) {
     try {
@@ -4009,7 +4028,7 @@ async function syncNow(force){
       setSyncBadge('live'); _lastSyncLabel(); renderToday(); showToast('✅ 시트 변경 없음 — 최신 상태');
       return;
     }
-    if (Array.isArray(data.productMap)) { EXTRA.productMap = data.productMap; _beanMap = null; }
+    if (Array.isArray(data.productMap)) { EXTRA.productMap = data.productMap; _beanMap = null; _unitMap = null; }
     ['targets','visits','holidays'].forEach(k => { if (Array.isArray(data[k])) EXTRA[k] = data[k]; });
     if (data.settings) EXTRA.settings = data.settings;
 
@@ -4621,6 +4640,10 @@ async function renderHealth(){
     <div class="hl-row"><span>예측 적중률 (최근 ${cal.months.length}개월)</span><b>${cal.wape!=null ? Math.max(0,Math.round((1-cal.wape)*100))+'% · 합계 오차 ±'+Math.round(cal.aggErr*100)+'%' : '데이터 부족'}</b></div>
     <div class="hl-row"><span>계절 보정</span><b>${seasonalTable() ? '적용 중' : '13개월 데이터 이후 자동 적용'}</b></div>
     <div class="hl-row"><span>일요일</span><b>${sundayClosed() ? '휴무로 판단' : '영업일로 계산'}</b></div>
+    ${(() => { const ym = todayYMD().slice(0,7); let se=0, sk=0, me=0, mk=0;
+       for (const o of orders) { if (o.date?.slice(0,7) !== ym) continue; if (o.unit < 1) { se += o.ea||0; sk += o.qty||0; } else if (o.unit > 1) { me += o.ea||0; mk += o.qty||0; } }
+       return `<div class="hl-row"><span>이번 달 1kg 미만 제품 (따로 집계)</span><b>${se.toLocaleString()}개 · ${r1(sk)}kg</b></div>
+               <div class="hl-row"><span>이번 달 2kg 이상 제품 (kg 환산)</span><b>${me.toLocaleString()}개 → ${r1(mk)}kg</b></div>`; })()}
     <div class="hl-row"><span>매핑 안 된 제품명</span><b>${unmapped.length ? unmapped.length+'개' : '없음'}</b></div>
     ${unmapped.length ? `<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:4px;">${unmapped.slice(0,12).join(', ')}${unmapped.length>12?' …':''}<br>시트 '제품매핑' 탭의 원두 칸을 채우면 다음 동기화부터 합쳐집니다.</div>` : ''}
     <div class="hl-row"><span>버전</span><b>v${APP_VERSION} (${APP_BUILD})</b></div>
