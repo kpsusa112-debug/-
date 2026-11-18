@@ -2,14 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Coffee CRM">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1D9E75">
 <meta name="description" content="커피 거래처 CRM — 발주 이력·담당자 관리">
-<title>☕ 거래처 CRM v30</title>
+<title>☕ 거래처 CRM v31</title>
 
 <!-- PWA Manifest (인라인 blob) -->
 <script>
@@ -368,6 +368,36 @@ a.btn.green{color:#fff;}
 .wx-key{font-size:14px;line-height:1.5;}
 .wx-sub{font-size:12px;color:var(--txt);margin-top:4px;}
 .wx-warn{font-size:11.5px;color:var(--amb);background:var(--amb-bg);border-radius:var(--r);padding:7px 9px;margin-top:8px;line-height:1.5;}
+
+/* v31: 핵심 지표 · 이탈 방어 · 신호 카드 */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}
+@media (min-width:640px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+.kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:12px;border:1px solid var(--bdr);border-radius:var(--r);background:var(--surf);color:var(--txt);cursor:pointer;font:inherit;min-height:88px;}
+.kpi:active{background:var(--surf2);}
+.kpi-l{font-size:12px;font-weight:700;color:var(--muted);}
+.kpi-v{font-size:22px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;}
+.kpi-s{font-size:12px;color:var(--muted);}
+.sec-note{font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;}
+.sig-chip{display:inline-block;font-size:10.5px;font-weight:700;color:var(--red);background:var(--red-bg);border-radius:4px;padding:0 5px;margin-left:2px;line-height:17px;}
+.sig-chip.new{color:var(--grn-dk);background:var(--grn-bg);}
+.sig-chip.share{color:var(--amb);background:var(--amb-bg);}
+.due{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);margin-top:2px;}
+.due.late{color:#fff;background:var(--red);border-radius:4px;padding:0 5px;}
+.due.ok{color:var(--grn-dk);}
+.sig-card{border:1.5px solid;border-radius:var(--r);padding:10px 12px;margin:10px 0;}
+.sig-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.stage-badge{color:#fff;font-size:12px;font-weight:800;border-radius:100px;padding:2px 10px;}
+.sig-act{font-size:13px;font-weight:700;}
+.sig-due{font-size:12px;color:var(--muted);margin-top:4px;}
+.sig-list{margin-top:8px;border-top:1px solid var(--bdr);}
+.sig-row{display:grid;grid-template-columns:18px 52px 1fr;gap:4px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--bdr);color:var(--muted);align-items:baseline;}
+.sig-row b{color:var(--txt);}
+.sig-row.on{color:var(--txt);}
+.sig-row.on .sig-dot{color:#fff;background:var(--red);border-radius:50%;text-align:center;font-weight:800;width:16px;height:16px;line-height:16px;font-size:11px;}
+.v3-vt.res{color:var(--amb);background:var(--amb-bg);}
+.acc-key{font-size:14px;line-height:1.5;margin-bottom:4px;}
+.acc-t td:first-child{font-size:12px;}
+.acc-best td{background:var(--grn-bg);}
 </style>
 </head>
 <body>
@@ -405,22 +435,24 @@ a.btn.green{color:#fff;}
 <div class="page active" id="page-home">
   <!-- 공지사항 -->
   <div id="home-notices" style="margin-bottom:4px;"></div>
+  <div id="home-kpi"></div>
   <div id="home-today"></div>
+  <div id="home-churn"></div>
   <div id="home-targets"></div>
   <div class="stat-grid" id="stat-grid"></div>
   <div class="two-col">
     <div class="card" style="cursor:pointer;" onclick="openMonthModal('ordered')"><div class="card-hd">이번 달 발주 ›</div><div class="card-bd" id="home-month"></div></div>
     <div class="card">
       <div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;gap:8px;">
-        <span style="cursor:pointer;letter-spacing:.05em;" onclick="openOverdueModal()">⚠ 지연 주의 ›</span>
-        <span id="od-week-val" style="font-size:11px;font-weight:700;color:var(--red);background:var(--red-bg);padding:2px 8px;border-radius:100px;flex-shrink:0;">10주</span>
+        <span style="cursor:pointer;letter-spacing:.05em;" onclick="openOverdueModal()">⚠ 이탈 (무발주) ›</span>
+        <span id="od-week-val" style="font-size:11px;font-weight:700;color:var(--red);background:var(--red-bg);padding:2px 8px;border-radius:100px;flex-shrink:0;">90일</span>
       </div>
       <div style="padding:0 2px 6px;display:flex;align-items:center;gap:8px;">
-        <span style="font-size:10px;color:var(--muted);">1주</span>
-        <input type="range" id="od-slider" min="1" max="20" step="1" value="10"
-          oninput="setOverdueWeeks(parseInt(this.value))"
+        <span style="font-size:10px;color:var(--muted);">30일</span>
+        <input type="range" id="od-slider" min="30" max="120" step="10" value="90" aria-label="이탈 기준 일수"
+          oninput="setChurnView(parseInt(this.value))"
           style="flex:1;accent-color:var(--red);">
-        <span style="font-size:10px;color:var(--muted);">20주</span>
+        <span style="font-size:10px;color:var(--muted);">120일</span>
       </div>
       <div class="card-bd" id="home-overdue"></div>
     </div>
@@ -430,7 +462,7 @@ a.btn.green{color:#fff;}
   <div class="sec-title">👤 담당자별 발주량</div>
   <div class="card"><div class="card-bd"><div class="bar-wrap" id="home-managers"></div></div></div>
   <!-- 총 발주량 필터 카드 -->
-  <div class="sec-title">📦 월별 매출 · 발주량 <span style="font-weight:500;text-transform:none;letter-spacing:0;">(상단 필터와 별개, 담당자 복수 선택)</span></div>
+  <div class="sec-title" id="hq-card">📦 월별 매출 · 발주량 <span style="font-weight:500;text-transform:none;letter-spacing:0;">(상단 필터와 별개, 담당자 복수 선택)</span></div>
   <div class="card">
     <div class="card-hd" style="padding-bottom:8px;">
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
@@ -626,6 +658,13 @@ a.btn.green{color:#fff;}
     <div class="card"><div class="card-bd" id="cycle-analysis-body"></div></div>
   </div>
 
+  <!-- 예측 정확도 -->
+  <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;">
+    <span>📏 예측 정확도 · 엔진 비교</span>
+    <button class="btn xs" onclick="runAccuracy()">계산</button>
+  </div>
+  <div class="card"><div class="card-bd" id="acc-body"><div class="no-data">[계산]을 누르면 지난 달들을 다시 예측해 엔진 4가지와 이탈 단계를 실제와 비교합니다 (몇 초 걸림).</div></div></div>
+
   <!-- 날씨 × 발주 -->
   <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;">
     <span>🌦 날씨 × 발주 (전사 카페, 주 단위)</span>
@@ -710,6 +749,10 @@ a.btn.green{color:#fff;}
       <button class="btn sm danger" onclick="disconnectGoogle()">해제</button>
     </div>
     <div id="connect-result" style="margin-top:9px;font-size:13px;"></div>
+  </div>
+  <div class="setup-card">
+    <h3>🎯 예측·이탈 기준 (팀 공통)</h3>
+    <div id="v31-settings"><div class="no-data">불러오는 중…</div></div>
   </div>
   <div class="setup-card">
     <h3>🩺 데이터 점검</h3>
@@ -826,7 +869,7 @@ a.btn.green{color:#fff;}
 <div class="overlay" id="sh-overdue">
 <div class="sheet">
   <div class="sh-handle"></div>
-  <div class="sh-title">⚠ 지연 주의 거래처</div>
+  <div class="sh-title">⚠ 이탈·지연 거래처</div>
   <div class="sh-body" id="sh-overdue-body"></div>
 </div></div>
 
@@ -915,33 +958,20 @@ const BC = ['#E5C28A','#E8C039','#B8763D','#D4A435','#7B4A24','#7F77DD','#5F5E5A
 const MN = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
 // 지연 주의 기준 — 1~20주 슬라이더 (localStorage 유지)
-let overdueWeeks = parseInt(localStorage.getItem('crm_od_weeks') || '10');
-if (overdueWeeks < 1 || overdueWeeks > 20) overdueWeeks = 10;
-function setOverdueWeeks(w) {
-  w = Math.max(1, Math.min(20, parseInt(w)||10));
-  overdueWeeks = w;
-  localStorage.setItem('crm_od_weeks', String(w));
-  renderOverdueWeekBtns();
-  renderHome();
-  if(document.getElementById('sh-overdue').classList.contains('open')) openOverdueModal();
-}
+// v31: '지연 주의 N주'는 '이탈 기준 N일'(churnDays, 30~120일)로 바뀜
+
 
 // 거래처별 실측 평균 발주 주기 (일) — 발주 2회 이상일 때만
 
 // 실측 평균주기 기준 지연 여부
 
-let overdueMode = localStorage.getItem('crm_od_mode') || 'actual';
+let overdueMode = localStorage.getItem('crm_od_mode') || 'fixed';
 function setOverdueMode(m) {
   overdueMode = (m==='actual')?'actual':'fixed';
   localStorage.setItem('crm_od_mode', overdueMode);
   openOverdueModal();
 }
-function renderOverdueWeekBtns() {
-  const sl = document.getElementById('od-slider');
-  const lab = document.getElementById('od-week-val');
-  if (sl && sl.value != String(overdueWeeks)) sl.value = String(overdueWeeks);
-  if (lab) lab.textContent = overdueWeeks + '주';
-}
+
 
 // ═══════════════════════════════════════════════════════
 //  MANAGER FILTER (전역 — 모든 탭 공통)
@@ -1346,7 +1376,7 @@ function _renderHomeBase() {
     <div class="stat"><div class="stat-l">전체 거래처${mgrLabel}</div><div class="stat-v">${allClients.length}</div><div class="stat-s">거래중 ${active.length}곳</div></div>
     <div class="stat" style="cursor:pointer;" onclick="openMonthModal('ordered')"><div class="stat-l">${monthLbl} ›</div><div class="stat-v">${moClientIds.length}<span style="font-size:14px;font-weight:400">곳</span></div><div class="stat-s">${mo.reduce((s,o)=>s+(o.qty||0),0)}kg · ${mo.length}건</div></div>
     <div class="stat" style="cursor:pointer;" onclick="openMonthModal('none')"><div class="stat-l">미발주 거래처 ›</div><div class="stat-v" style="color:${noOrderThisMonth.length>0?'var(--amb)':'inherit'}">${noOrderThisMonth.length}<span style="font-size:14px;font-weight:400">곳</span></div><div class="stat-s">${monthFilter?'해당 월 기준':'거래중 기준'}</div></div>
-    <div class="stat" style="cursor:pointer;" onclick="openOverdueModal()"><div class="stat-l">지연 주의 ›</div><div class="stat-v" style="color:${active.filter(isOD).length>0?'var(--red)':'inherit'}">${active.filter(isOD).length}<span style="font-size:14px;font-weight:400">곳</span></div><div class="stat-s">주기 초과</div></div>`;
+    <div class="stat" style="cursor:pointer;" onclick="openOverdueModal()"><div class="stat-l">이탈 ›</div><div class="stat-v" style="color:${active.filter(isOD).length>0?'var(--red)':'inherit'}">${active.filter(isOD).length}<span style="font-size:14px;font-weight:400">곳</span></div><div class="stat-s">주기 초과</div></div>`;
   const tmCids=[...new Set(mo.map(o=>o.clientId))];
   document.getElementById('home-month').innerHTML=tmCids.length
     ?tmCids.slice(0,5).map(cid=>{const c=clients.find(x=>x.id===cid);if(!c)return'';const kg=mo.filter(o=>o.clientId===cid).reduce((s,o)=>s+(o.qty||0),0);return`<div onclick="openOrderDetail(${c.id})" style="display:flex;justify-content:space-between;align-items:center;padding:6px 2px;border-bottom:1px solid var(--bdr);font-size:13px;cursor:pointer;" onmousedown="this.style.opacity='.7'" onmouseup="this.style.opacity='1'" ontouchstart="this.style.opacity='.7'" ontouchend="this.style.opacity='1'"><span>${c.name}</span><div style="display:flex;align-items:center;gap:5px;"><span style="font-weight:700;color:var(--grn-dk)">${kg}kg</span><span style="font-size:10px;color:var(--muted)">›</span></div></div>`;}).join('')+(tmCids.length>5?`<div onclick="openMonthModal('ordered')" style="font-size:11px;color:var(--muted);padding-top:5px;cursor:pointer;">외 ${tmCids.length-5}곳 더보기 →</div>`:'')
@@ -2489,7 +2519,7 @@ function openOverdueModal() {
   // 모드 토글 (설정 주기 / 실측 평균주기)
   const modeToggle=`
     <div style="display:flex;gap:6px;margin-bottom:10px;">
-      <button onclick="setOverdueMode('fixed')" style="flex:1;padding:8px 10px;font-size:12px;font-weight:700;border-radius:8px;border:1.5px solid ${!useActual?'var(--red)':'var(--bdr2)'};background:${!useActual?'var(--red)':'var(--surf2)'};color:${!useActual?'#fff':'var(--muted)'};cursor:pointer;">설정 주기 기준</button>
+      <button onclick="setOverdueMode('fixed')" style="flex:1;padding:8px 10px;font-size:12px;font-weight:700;border-radius:8px;border:1.5px solid ${!useActual?'var(--red)':'var(--bdr2)'};background:${!useActual?'var(--red)':'var(--surf2)'};color:${!useActual?'#fff':'var(--muted)'};cursor:pointer;">이탈 기준 (무발주 일수)</button>
       <button onclick="setOverdueMode('actual')" style="flex:1;padding:8px 10px;font-size:12px;font-weight:700;border-radius:8px;border:1.5px solid ${useActual?'var(--red)':'var(--bdr2)'};background:${useActual?'var(--red)':'var(--surf2)'};color:${useActual?'#fff':'var(--muted)'};cursor:pointer;">📊 실측 평균주기</button>
     </div>`;
 
@@ -2497,10 +2527,10 @@ function openOverdueModal() {
   const weekSelector= useActual ? '' : `
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
       <span style="font-size:12px;color:var(--muted);flex-shrink:0;">기준:</span>
-      ${[5,10,15,20].map(w=>`
-        <button onclick="setOverdueWeeks(${w})" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:100px;border:1.5px solid ${overdueWeeks===w?'var(--red)':'var(--bdr2)'};background:${overdueWeeks===w?'var(--red)':'var(--surf2)'};color:${overdueWeeks===w?'#fff':'var(--muted)'};cursor:pointer;">${w}주</button>
+      ${[30,60,90,120].map(w=>`
+        <button onclick="setChurnView(${w})" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:100px;border:1.5px solid ${churnDays()===w?'var(--red)':'var(--bdr2)'};background:${churnDays()===w?'var(--red)':'var(--surf2)'};color:${churnDays()===w?'#fff':'var(--muted)'};cursor:pointer;">${w}일</button>
       `).join('')}
-      <span style="font-size:11px;color:var(--muted);margin-left:2px;">(${overdueWeeks*7}일 이상 미발주)</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:2px;">(${churnDays()}일 이상 무발주 · 슬라이더는 이 화면에만)</span>
     </div>`;
 
   const actualHint = useActual ? `<div style="margin-bottom:10px;padding:8px 10px;background:var(--surf2);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.5;">거래처별 실제 발주 간격 평균을 초과한 거래처만 표시 (발주 2회 이상)</div>` : '';
@@ -2550,7 +2580,7 @@ function openClientChart(cid) {
   document.getElementById('sh-chart-body').innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <span class="badge ${c.status==='active'?'b-active':'b-inactive'}">${c.status==='active'?'거래중':'종료'}</span>
-      ${od?'<span class="badge b-late">지연 주의</span>':''}
+      ${od?'<span class="badge b-late">이탈</span>':''}
       ${(c.beans||[]).length?`<span style="font-size:11px;color:var(--grn-dk);background:var(--grn-bg);border-radius:100px;padding:2px 8px;">${(c.beans||[]).join(', ')}</span>`:''}
     </div>
     <div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.8;">
@@ -3421,7 +3451,7 @@ function runAIInsights(){
 
     // 3. 지연 거래처
     const overdue=baseClients.filter(isOD);
-    if(overdue.length) insights.push({icon:'⏰',title:`지연 의심 거래처 (${overdueWeeks}주 이상)`,items:overdue.slice(0,5).map(c=>`<strong>${c.name}</strong> · ${c.manager||'-'}`),color:'var(--red)',why:`거래처에 설정된 발주 주기(주 1회/격주/월 1회 등)와 마지막 발주일을 비교해, 예상 주기보다 ${overdueWeeks}주 이상 발주가 없는 활성 거래처를 추렸습니다. 비정기(custom) 거래처는 기본 ${overdueWeeks}주를 기준으로 합니다.`});
+    if(overdue.length) insights.push({icon:'⏰',title:`이탈 거래처 (${churnDays()}일 이상 무발주)`,items:overdue.slice(0,5).map(c=>`<strong>${c.name}</strong> · ${c.manager||'-'}`),color:'var(--red)',why:`마지막 발주 후 ${churnDays()}일 이상 발주가 없는 거래중 거래처입니다. 기준 일수는 시트 설정 탭 CHURN_DAYS(팀 공통)이고, 홈 슬라이더로 이 화면에서만 30~120일로 바꿔 볼 수 있습니다.`});
 
     // 4. 다음 30일 예측 발주량 (v30 통합 엔진)
     {
@@ -3588,7 +3618,7 @@ function switchPage(name, btn) {
   if (name === 'orders') renderOrders();
   if (name === 'analytics') renderAnalytics();
   if (name === 'inventory') renderInventory();
-  if (name === 'settings') { renderNoticeMgmt(); renderHealth(); }
+  if (name === 'settings') { renderNoticeMgmt(); renderHealth(); renderV31Settings(); }
   // 탭 변경 시 history에 기록
   if (name !== 'home') {
     _pushState('tab:' + name);
@@ -3811,8 +3841,8 @@ function openWeekOrders(wkKey, range, startISO, endISO, wNum) {
 // ═══════════════════════════════════════════════════════
 //  v30 CORE — 날짜(KST) · 인덱스 · IndexedDB · 동기화 · 예측 엔진
 // ═══════════════════════════════════════════════════════
-const APP_VERSION = '30.3.0';
-const APP_BUILD   = '2026-10-21';
+const APP_VERSION = '31.0.0';
+const APP_BUILD   = '2026-11-18';
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbx1Tqel3145jjoGOZzGRXGiCQAoV_Rx3QniZjXVoGGXms_rnWkCOp1ynDEGUCoHxC2zBA/exec';
 const LEGACY_API_URLS = ['https://script.google.com/macros/s/AKfycby2MgEd72vRd8OnpFgqKNLL_hUyWCIVEX-L_rCwQ9ETsShl__t6ZgwLwmJMK8PHl6Hicw/exec',
   'https://script.google.com/macros/s/AKfycbya6V673E3lHwLdnABAMWIGxift-rG7vGlXc-j3aMJYs80Oc9pcJ4x7psuq8t_BI0nhsQ/exec'];
@@ -3885,7 +3915,7 @@ function filterOrdersByManager(list){
   if (monthFilter)   result = result.filter(o => o.date?.slice(0,7) === monthFilter);
   return result;
 }
-function isOD(c){ const l=lastOrder(c.id); if(!l) return false; return (overdueWeeks*7) < daysAgo(l.date); }
+
 function avgCycleDays(cid){ const f=forecastClient(cid, tomorrowYMD()); return f && f.cycle ? f.cycle : null; }
 function isODActual(c){ const f=forecastClient(c.id, tomorrowYMD()); return !!(f && f.cycle && f.ratio > 1.5); }
 
@@ -4029,7 +4059,8 @@ async function syncNow(force){
       return;
     }
     if (Array.isArray(data.productMap)) { EXTRA.productMap = data.productMap; _beanMap = null; _unitMap = null; }
-    ['targets','visits','holidays'].forEach(k => { if (Array.isArray(data[k])) EXTRA[k] = data[k]; });
+    ['targets','visits','holidays','churnLog','pastWeekly','fcLog'].forEach(k => { if (Array.isArray(data[k])) EXTRA[k] = data[k]; });
+    _calCache = null;
     if (data.settings) EXTRA.settings = data.settings;
 
     if (data.clients?.length) {
@@ -4070,6 +4101,7 @@ async function syncNow(force){
     setSyncBadge('live'); _lastSyncLabel();
     refreshAll();
     showToast('✅ 동기화 완료 (거래처 ' + clients.length + '곳, 발주 ' + orders.length.toLocaleString() + '건)');
+    maybeLogForecast().catch(() => {});
   } catch(e) {
     setSyncBadge('local');
     showToast('⚠ 동기화 실패: ' + e.message);
@@ -4129,6 +4161,7 @@ function seasonalTable(){
     v = {};
     last12.forEach(m => { v[m.slice(5)] = avg ? Math.min(1.4, Math.max(0.6, byM[m]/avg)) : 1; });
   }
+  if (!v) v = pastSeasonTable();   // 발주 13개월 전: 2025 과거 자료
   _season = { v, ver:_dataVer };
   return v;
 }
@@ -4204,7 +4237,7 @@ function _fcBase(cid, asOf){
 const CONF_LABEL = { high:['신뢰도 높음','var(--grn-dk)'], mid:['신뢰도 보통','var(--amb)'], low:['불규칙','var(--red)'], few:['표본 부족','var(--muted)'], single:['발주 1회','var(--muted)'] };
 
 // 기간 [start,end] 중 asOf 이후 예상 발주 (거래처 1곳)
-function expectClient(cid, start, end, asOf){
+function expectLegacy(cid, start, end, asOf){
   const out = { kg:0, rev:0, cnt:0, dates:[], f:null };
   const f = forecastClient(cid, asOf); out.f = f;
   if (!f || !f.cycle) return out;
@@ -4223,7 +4256,7 @@ function expectClient(cid, start, end, asOf){
   }
   const baseIdx = seasonalIndex(asOf);
   out.dates.forEach(dd => {
-    const s = seasonalIndex(dd) / baseIdx;
+    const s = seasonalIndex(dd) / baseIdx * holidayFactor(dd);
     out.kg += f.qty * f.pActive * s; out.rev += f.rev * f.pActive * s; out.cnt += f.pActive;
   });
   return out;
@@ -4246,26 +4279,7 @@ function fcTargets(){
   return t;
 }
 let _calCache = null;
-function getCalibration(){
-  const key = [_dataVer, managerFilter, analyticsClient ? analyticsClient.id : '', pfGrade, todayYMD()].join('|');
-  if (_calCache && _calCache.key === key) return _calCache.v;
-  const T = fcTargets(), t = parseYMD(todayYMD()), months = [];
-  for (let i=3; i>=1; i--) {
-    const s = new Date(t.getFullYear(), t.getMonth()-i, 1).toYMD(), e = new Date(t.getFullYear(), t.getMonth()-i+1, 0).toYMD();
-    let act=0, pred=0, abs=0;
-    for (const c of T) { const a = sumActual(c.id, s, e).kg, p = expectClient(c.id, s, e, s).kg; act += a; pred += p; abs += Math.abs(a-p); }
-    if (act > 0) months.push({ month:s.slice(0,7), act, pred, wape:abs/act, aggErr:Math.abs(act-pred)/act });
-  }
-  const v = { factor:1, months, wape:null, aggErr:null };
-  if (months.length) {
-    const A = months.reduce((s,m) => s+m.act, 0), P = months.reduce((s,m) => s+m.pred, 0);
-    v.wape = months.reduce((s,m) => s+m.wape, 0) / months.length;
-    v.aggErr = months.reduce((s,m) => s+m.aggErr, 0) / months.length;
-    if (P > 0 && months.length >= 2) v.factor = Math.min(1.2, Math.max(0.8, A/P));
-  }
-  _calCache = { key, v };
-  return v;
-}
+
 
 // ═══════════════════════════════════════════════════════
 //  기간 예상 매출 = 확정 실적(오늘까지) + 남은 기간 예측
@@ -4325,6 +4339,11 @@ function renderPeriodForecast(){
     }
     rows.push(...extra.values());
   }
+  if (!analyticsClient && !pfGrade) {
+    const inf = inflowForPeriod(filterByManager(clients), S, E, 'pf|' + managerFilter);
+    if (inf.kg > 0.05) rows.push({ id:'', name:'신규·첫 발주 거래처 예상분', manager:'-', grade:'', cycle:null, conf:'single', churn:0, pActive:1,
+      actKg:0, actRev:0, actCnt:0, expKg:inf.kg, expRev:inf.rev, expCnt:0, totKg:inf.kg, totRev:inf.rev, nextDate:'', dday:null, inflow:true });
+  }
   if (periodForecastSort === 'urgent') rows.sort((a,b) => (a.dday ?? 999) - (b.dday ?? 999));
   else if (periodForecastSort === 'churn') rows.sort((a,b) => b.churn - a.churn);
   else rows.sort((a,b) => b.totRev - a.totRev);
@@ -4351,16 +4370,16 @@ function renderPeriodForecast(){
       ${rng?`<div class="pf-range">예상 범위 ${rng}</div>`:''}
     </div>
     <div class="pf-note">
-      ${acc!=null?`최근 ${cal.months.length}개월 백테스트: 거래처별 적중률 ${acc}% · 합계 오차 ±${Math.round(cal.aggErr*100)}%${cal.factor!==1?` · 보정계수 ×${cal.factor.toFixed(2)}`:''}<br>`:'백테스트할 과거 데이터가 부족해 보정 없이 계산했습니다.<br>'}
-      주기·1회 수량은 지수평활(최근 가중)과 중앙값으로 추정하고, 주기를 1.5배 넘긴 거래처는 발주 확률을 낮춰 반영합니다. 공휴일${sundayClosed()?'·일요일':''}에 걸린 예정일은 직전 영업일로 당깁니다.
+      ${acc!=null?`최근 ${cal.months.length}개월 백테스트: 거래처별 적중률 ${acc}% · 합계 오차 ±${Math.round(cal.aggErr*100)}%${cal.segApplied?` · 거래처 유형 ${cal.segApplied}개 보정`:''}<br>`:'백테스트할 과거 데이터가 부족해 보정 없이 계산했습니다.<br>'}
+      예측 엔진: <b>${ENGINES[fcEngine()]}</b> (설정 탭에서 변경, 분석 탭 '예측 정확도'에서 비교). 적중률은 전체 거래처 기준입니다. 공휴일${sundayClosed()?'·일요일':''}에 걸린 예정일은 직전 영업일로 당깁니다.
     </div>
     <div style="max-height:460px;overflow:auto;border-top:1px solid var(--bdr);">
       ${rows.slice(0, pfLimit).map(r => `
-        <div class="pf-row" onclick="openOrderDetail(${jsArg(r.id)})">
+        <div class="pf-row"${r.inflow ? '' : ` onclick="openOrderDetail(${jsArg(r.id)})"`}>
           <div style="flex:1;min-width:0;">
             <div class="pf-name">${r.name}${r.grade?` <span class="g-badge g-${r.grade}">${r.grade}</span>`:''}${r.churn>=60?` <span class="churn-badge">이탈위험 ${r.churn}</span>`:''}</div>
             <div class="pf-sub">${r.manager}${r.cycle?` · ${r.cycle}일 주기`:''}${r.nextDate?` · 다음 ${fmtMD(r.nextDate)}${r.dday!=null?(r.dday>=0?` D-${r.dday}`:` ${-r.dday}일 지남`):''}`:''}</div>
-            <div class="pf-sub">${r.extra ? '실적만 집계 (예측 제외)' : confDot(r) + (r.pActive<1?` · 발주확률 ${Math.round(r.pActive*100)}%`:'')}</div>
+            <div class="pf-sub">${r.inflow ? '거래처별로는 예측되지 않는 신규 몫 (최근 6개월 평균)' : r.extra ? '실적만 집계 (예측 제외)' : confDot(r) + (r.pActive<1?` · 발주확률 ${Math.round(r.pActive*100)}%`:'')}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:13px;font-weight:800;color:var(--grn-dk);">${r1(r.totKg)}kg</div>
@@ -4468,8 +4487,7 @@ function calcBeanStock(bean, baseDate){
 // ═══════════════════════════════════════════════════════
 //  홈: 오늘 할 일 · 목표 달성
 // ═══════════════════════════════════════════════════════
-const _todayOpen = { due:false, risk:false, stock:false };
-function toggleToday(k){ _todayOpen[k] = !_todayOpen[k]; renderToday(); }
+
 function lastVisitOf(cid){
   let best = null;
   for (const v of (EXTRA.visits||[])) if (String(v.clientId) === String(cid) && (!best || v.date > best.date)) best = v;
@@ -4479,61 +4497,7 @@ function telLink(phone){
   const p = String(phone||'').replace(/[^0-9+]/g, '');
   return p ? `<a class="tel-btn" href="tel:${p}" onclick="event.stopPropagation()" aria-label="전화 걸기">전화</a>` : '';
 }
-function renderToday(){
-  const el = document.getElementById('home-today');
-  if (!el) return;
-  const today = todayYMD(), tmr = tomorrowYMD(), d3 = addDaysYMD(today, 3);
-  const due = [], risk = [];
-  for (const c of filterByManager(clients)) {
-    if (c.status !== 'active') continue;
-    const f = forecastClient(c.id, tmr);
-    if (!f || !f.cycle) continue;
-    const nd = businessDay(f.nextDue);
-    if (f.ratio <= 1.5 && nd <= d3) due.push({ c, f, nd });
-    else if (f.ratio > 1.5 && f.ratio <= 4) risk.push({ c, f });
-  }
-  due.sort((a,b) => a.nd.localeCompare(b.nd));
-  risk.sort((a,b) => b.f.churn - a.f.churn);
-  const stock = [];
-  [...new Set(inventory.map(i => i.bean).filter(Boolean))].forEach(b => {
-    const s = calcBeanStock(b);
-    if (s && s.daysLeft !== null && s.daysLeft < 14) stock.push({ b, s });
-  });
-  stock.sort((a,b) => a.s.daysLeft - b.s.daysLeft);
 
-  const visitNote = cid => { const v = lastVisitOf(cid); return v ? ` · 연락 ${daysAgo(v.date)}일 전` : ''; };
-  const row = (c, sub, right) => `
-    <div class="td-row" onclick="openOrderDetail(${jsArg(c.id)})">
-      <div style="flex:1;min-width:0;"><div class="td-name">${c.name}${c.grade?` <span class="g-badge g-${c.grade}">${c.grade}</span>`:''}</div><div class="td-sub">${sub}</div></div>
-      <div class="td-right">${right}</div>${telLink(c.phone)}
-    </div>`;
-  const group = (k, title, tone, list, render, empty) => {
-    const shown = _todayOpen[k] ? list.slice(0, 40) : list.slice(0, 5);
-    return `<div class="td-group">
-      <div class="td-head"><span class="td-title" style="color:${tone}">${title}</span><span class="td-count">${list.length}</span></div>
-      ${list.length ? shown.map(render).join('') : `<div class="no-data">${empty}</div>`}
-      ${list.length > 5 ? `<button class="td-more" onclick="toggleToday('${k}')">${_todayOpen[k] ? '접기' : `${list.length-5}곳 더 보기`}</button>` : ''}
-    </div>`;
-  };
-  const age = EXTRA.syncedAt ? daysAgo(new Date(EXTRA.syncedAt).toYMD()) : null;
-  const syncHint = !EXTRA.syncedAt
-    ? `<div class="sync-hint">아직 시트 데이터를 받지 않아 예시 데이터가 보입니다. <button class="btn xs green" onclick="syncNow()">지금 동기화</button></div>`
-    : age >= 3 ? `<div class="sync-hint">마지막 동기화 ${age}일 전 · 최신 실적이 아닐 수 있습니다. <button class="btn xs" onclick="syncNow()">동기화</button></div>` : '';
-  el.innerHTML = syncHint + `<div class="card td-card"><div class="card-bd">
-    ${group('due', '발주 예정 · 3일 안', 'var(--grn-dk)', due, x => {
-      const dd = diffDays(today, x.nd);
-      return row(x.c, `${x.c.manager||'-'} · ${fmtMD(x.nd)} ${dd>0?`D-${dd}`:dd===0?'오늘':`${-dd}일 지남`}${visitNote(x.c.id)}`, `${r1(x.f.qty)}kg`);
-    }, '3일 안에 예정된 발주가 없습니다')}
-    ${group('risk', '주기 초과 · 이탈 방어', 'var(--red)', risk, x =>
-      row(x.c, `${x.c.manager||'-'} · ${x.f.elapsed}일째 미발주 (주기 ${x.f.cycle}일)${visitNote(x.c.id)}`, `<span class="churn-num">${x.f.churn}</span>`),
-      '주기를 넘긴 거래처가 없습니다')}
-    ${group('stock', '재고 2주 안 소진', 'var(--amb)', stock, x => `
-      <div class="td-row" onclick="switchPage('inventory', document.querySelector('.ni[onclick*=inventory]'))">
-        <div style="flex:1;"><div class="td-name">${x.b}</div><div class="td-sub">잔량 ${r1(x.s.remain)}kg · ${x.s.exhaustDate} 소진 예상</div></div>
-        <div class="td-right">${x.s.need30>0?`입고 ${x.s.need30}kg`:''}</div>
-      </div>`, '2주 안에 소진될 원두가 없습니다')}
-  </div></div>`;
-}
 function renderTargets(){
   const el = document.getElementById('home-targets');
   if (!el) return;
@@ -4568,59 +4532,12 @@ function renderTargets(){
     }).join('')}
   </div></div>`;
 }
-function renderHome(){ _renderHomeBase(); renderToday(); renderTargets(); }
+
 
 // ── 거래처 상세: 예측 · 연락 · 방문기록 ──
-function openOrderDetail(cid){
-  _openOrderDetailBase(cid);
-  const body = document.getElementById('sh-od-body');
-  if (!body) return;
-  const box = document.createElement('div');
-  box.innerHTML = v3DetailBlock(cid);
-  body.insertBefore(box, body.children[1] || null);
-}
-function v3DetailBlock(cid){
-  const c = getClient(cid) || {};
-  const f = forecastClient(cid, tomorrowYMD());
-  const today = todayYMD();
-  const visits = (EXTRA.visits||[]).filter(v => String(v.clientId) === String(cid)).sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0, 5);
-  const nd = f && f.cycle ? businessDay(f.nextDue) : null, dd = nd ? diffDays(today, nd) : null;
-  const map = c.address ? `<a class="btn sm" href="https://map.naver.com/p/search/${encodeURIComponent(c.address)}" target="_blank" rel="noopener">지도</a>` : '';
-  const phone = String(c.phone||'').replace(/[^0-9+]/g, '');
-  return `
-  <div class="v3-detail">
-    ${f && f.cycle ? `<div class="v3-fc">
-      <div><div class="mini-l">다음 예상 발주</div><div class="v3-fc-v">${fmtMD(nd)} <small style="color:${dd<0?'var(--red)':'var(--muted)'}">${dd>0?`D-${dd}`:dd===0?'오늘':`${-dd}일 지남`}</small></div></div>
-      <div><div class="mini-l">예상 수량</div><div class="v3-fc-v">${r1(f.qty)}<small>kg</small></div></div>
-      <div><div class="mini-l">이탈 점수</div><div class="v3-fc-v" style="color:${f.churn>=60?'var(--red)':f.churn>=35?'var(--amb)':'var(--grn-dk)'}">${f.churn}</div></div>
-    </div>` : ''}
-    <div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap;">
-      ${phone?`<a class="btn sm green" href="tel:${phone}">전화 ${c.phone}</a>`:''}${map}
-      ${c.grade?`<span class="g-badge g-${c.grade}" style="align-self:center;">${c.grade}등급</span>`:''}
-    </div>
-    <div class="mini-l" style="margin-bottom:6px;">방문·통화 기록</div>
-    <div class="v3-visit-form">
-      <input type="date" id="vs-date" value="${today}">
-      <select id="vs-type"><option>방문</option><option>통화</option><option>메시지</option><option>발주약속</option></select>
-      <input type="text" id="vs-memo" placeholder="내용 (예: 다음 주 화요일 8kg 예정)">
-      <button class="btn sm primary" onclick="saveVisitV3(${jsArg(cid)})">기록 저장</button>
-    </div>
-    ${visits.length ? visits.map(v => `<div class="v3-visit"><b>${v.date}</b> <span class="v3-vt">${v.type||''}</span> ${v.memo||''}</div>`).join('') : '<div class="no-data">아직 기록이 없습니다</div>'}
-  </div>`;
-}
-function saveVisitV3(cid){
-  const c = getClient(cid) || {};
-  const date = document.getElementById('vs-date')?.value || todayYMD();
-  const type = document.getElementById('vs-type')?.value || '방문';
-  const memo = (document.getElementById('vs-memo')?.value || '').trim();
-  if (!memo && type !== '방문') { showToast('내용을 입력하세요'); return; }
-  const data = { date, clientId:cid, clientName:c.name||'', manager:c.manager||'', type, memo };
-  EXTRA.visits = [...(EXTRA.visits||[]), { ...data, id:'local-'+Date.now() }];
-  saveExtra();
-  apiPost({ action:'saveVisit', data });
-  showToast('기록을 저장했습니다');
-  openOrderDetail(cid);
-}
+
+
+
 
 // ── 설정: 데이터 점검 ──
 async function renderHealth(){
@@ -4879,6 +4796,774 @@ function renderWeather(){
         scales:{ x:{ ticks:{ maxTicksLimit:8, font:{ size:9 } } }, y:{ position:'left', ticks:{ font:{ size:9 } } }, y1:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:{ size:9 } } } } }
     });
   }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  v31 — 팀 설정 · 예측 엔진(TSB/8주/조합) · 유형별 보정 · 계절·명절 · 신규 유입
+//        · 이탈 신호 6종 · 단계·기한 · 기대 손실 · 홈 핵심 지표
+// ═══════════════════════════════════════════════════════
+const V31_DEF = { CHURN_DAYS:90, STAGE_WATCH:1.3, STAGE_WARN:1.5, STAGE_RISK:2.5, QTY_DROP:0.7, CONTACT_GAP:60,
+  LOSS_MONTHS:12, NEW_DAYS:90, DUE_WATCH:3, DUE_WARN:7, DUE_RISK:14 };
+function S(k){ const v = parseFloat(EXTRA.settings?.[k]); return isFinite(v) && v > 0 ? v : V31_DEF[k]; }
+function settingStr(k, d){ const v = EXTRA.settings?.[k]; return (v === undefined || v === null || v === '') ? d : String(v); }
+function excludedIds(){ return new Set(settingStr('CHURN_EXCLUDE','').split(/[,\s]+/).filter(Boolean)); }
+function v31Key(){ return [_dataVer, todayYMD(), JSON.stringify(EXTRA.settings||{}), (EXTRA.visits||[]).length, churnDays(), fcEngine()].join('|'); }
+
+// ── 이탈 기준 (팀 기준 = 시트 설정 CHURN_DAYS, 슬라이더 = 이 화면에만) ──
+function teamChurnDays(){ return Math.max(30, Math.min(120, Math.round(S('CHURN_DAYS')))); }
+function churnDays(){
+  let v = 0; try { v = parseInt(localStorage.getItem('crm_churn_view') || '0'); } catch(e) {}
+  return v >= 30 && v <= 120 ? v : teamChurnDays();
+}
+function setChurnView(d){
+  d = Math.max(30, Math.min(120, Math.round((parseInt(d)||90)/10)*10));
+  try { d === teamChurnDays() ? localStorage.removeItem('crm_churn_view') : localStorage.setItem('crm_churn_view', String(d)); } catch(e) {}
+  renderOverdueWeekBtns(); renderHome();
+  if (document.getElementById('sh-overdue')?.classList.contains('open')) openOverdueModal();
+}
+function renderOverdueWeekBtns(){
+  const sl = document.getElementById('od-slider'), lab = document.getElementById('od-week-val'), d = churnDays(), t = teamChurnDays();
+  if (sl && sl.value != String(d)) sl.value = String(d);
+  if (lab) lab.innerHTML = d === t ? `${d}일` : `${d}일 <span onclick="event.stopPropagation();setChurnView(${t})" style="cursor:pointer;text-decoration:underline;font-weight:600;">팀 기준 ${t}일로</span>`;
+}
+function setOverdueWeeks(w){ setChurnView(w); }
+function isOD(c){
+  if (excludedIds().has(String(c.id))) return false;
+  const l = lastOrder(c.id); if (!l) return false;
+  return daysAgo(l.date) >= churnDays();
+}
+
+// ── 엔진 선택 ──
+const ENGINES = { legacy:'기존 (주기 기반)', tsb:'TSB (발주 확률)', ma8:'최근 8주 평균', combo:'조합 (TSB + 8주)' };
+function fcEngine(){
+  let v = ''; try { v = localStorage.getItem('crm_engine_view') || ''; } catch(e) {}
+  if (!ENGINES[v]) v = settingStr('FC_ENGINE', 'legacy');
+  return ENGINES[v] ? v : 'legacy';
+}
+function setEngineView(v){
+  try { (!v || v === settingStr('FC_ENGINE','legacy')) ? localStorage.removeItem('crm_engine_view') : localStorage.setItem('crm_engine_view', v); } catch(e) {}
+  _calCache = null; renderV31Settings(); refreshAll();
+  showToast('예측 엔진: ' + ENGINES[fcEngine()] + ' (이 기기 화면에만 적용)');
+}
+
+// ── 주(월요일 시작) 번호 ──
+function weekNo(n){ return Math.floor((n + 3) / 7); }
+function weekStartNum(w){ return w * 7 - 3; }
+
+// ── 계절: 발주 탭 13개월 전에는 2025년 과거 주간 집계로 ──
+let _pastSeason = null;
+function pastSeasonTable(){
+  const W = EXTRA.pastWeekly || [];
+  if (_pastSeason && _pastSeason.src === W) return _pastSeason.v;
+  let v = null;
+  if (W.length >= 48) {
+    const byYM = {};
+    for (const x of W) { const thu = dayStr(dayNum(x.w) + 3).slice(0,7); byYM[thu] = (byYM[thu]||0) + (x.kg||0); }
+    const cnt = {}; for (const x of W) { const k = dayStr(dayNum(x.w) + 3).slice(0,7); cnt[k] = (cnt[k]||0) + 1; }
+    const yms = Object.keys(byYM).sort().filter(k => cnt[k] >= 4);   // 주가 4개 미만인 불완전 월 제외
+    if (yms.length >= 12) {
+      const byM = {};
+      yms.forEach(ym => { (byM[ym.slice(5)] ||= []).push(byYM[ym]); });
+      const mAvg = {}; Object.keys(byM).forEach(m => mAvg[m] = byM[m].reduce((a,b)=>a+b,0)/byM[m].length);
+      const all = Object.values(mAvg), mean = all.reduce((a,b)=>a+b,0)/all.length;
+      if (all.length === 12 && mean > 0) { v = {}; Object.keys(mAvg).forEach(m => v[m] = Math.min(1.4, Math.max(0.6, mAvg[m]/mean))); }
+    }
+  }
+  _pastSeason = { src:W, v };
+  return v;
+}
+
+// ── 명절 직전 선발주 계수 (2025 과거 + 2026 발주로 측정) ──
+const MAJOR_HOLIDAYS = ['2025-01-28','2025-10-03','2026-02-16','2026-09-24','2027-02-06','2027-09-14'];
+let _hf = null;
+function holidayPreFactor(){
+  const key = _dataVer + '|' + (EXTRA.pastWeekly||[]).length + '|' + todayYMD();
+  if (_hf && _hf.key === key) return _hf.v;
+  const wk = new Map();
+  for (const x of (EXTRA.pastWeekly||[])) { const w = weekNo(dayNum(x.w)); wk.set(w, (wk.get(w)||0) + (x.kg||0)); }
+  const firstOrd = orders.reduce((m,o) => o.date && o.date < m ? o.date : m, '9999');
+  const wo = new Map();
+  for (const o of orders) { if (!o.date || o.qty <= 0) continue; const w = weekNo(dayNum(o.date)); wo.set(w, (wo.get(w)||0) + o.qty); }
+  const ratios = [];
+  for (const H of MAJOR_HOLIDAYS) {
+    if (H >= todayYMD()) continue;
+    const hw = weekNo(dayNum(H)), src = H >= firstOrd ? wo : wk;
+    const pre = [hw-1, hw-2].map(w => src.get(w)||0), base = [3,4,5,6,7,8].map(k => src.get(hw-k)||0);
+    if (base.filter(x => x > 0).length < 5 || pre.some(x => x <= 0)) continue;
+    const b = base.reduce((a,c)=>a+c,0)/base.length;
+    if (b > 0) ratios.push((pre[0]+pre[1])/2/b);
+  }
+  const v = ratios.length ? Math.min(1.5, Math.max(0.8, ratios.reduce((a,b)=>a+b,0)/ratios.length)) : 1;
+  _hf = { key, v, n:ratios.length };
+  return v;
+}
+function holidayFactor(d){
+  const f = holidayPreFactor(); if (f === 1) return 1;
+  const n = dayNum(d);
+  for (const H of MAJOR_HOLIDAYS) { const h = dayNum(H); if (n < h && n >= h - 14) return f; }
+  return 1;
+}
+// 기간 [from,end]의 날짜별 (계절 × 명절) 계수 합 — 모든 거래처 공통이라 캐시
+const _dfs = new Map();
+function dayFactorSum(from, end, asOf){
+  const key = _dataVer + '|' + from + '|' + end + '|' + asOf;
+  if (_dfs.has(key)) return _dfs.get(key);
+  const base = seasonalIndex(asOf); let sum = 0;
+  for (let n = dayNum(from), e = dayNum(end); n <= e; n++) { const d = dayStr(n); sum += seasonalIndex(d) / base * holidayFactor(d); }
+  if (_dfs.size > 5000) _dfs.clear();
+  _dfs.set(key, sum);
+  return sum;
+}
+
+// ── TSB: 매주 발주 여부로 발주 확률 p, 발주 있을 때만 1회 수량 z 갱신 ──
+const TSB_A = 0.2, TSB_B = 0.1;
+const _tsb = new Map(); let _tsbVer = -1;
+function tsbState(cid, asOf){
+  if (_tsbVer !== _dataVer) { _tsb.clear(); _tsbVer = _dataVer; }
+  const key = cid + '|' + asOf;
+  if (_tsb.has(key)) return _tsb.get(key);
+  const aN = dayNum(asOf), ev = clientEvents(cid).filter(e => e.n < aN);
+  let res = null;
+  if (ev.length >= 2) {
+    const wk = new Map();
+    for (const e of ev) { const w = weekNo(e.n), x = wk.get(w) || { kg:0, rev:0 }; x.kg += e.kg; x.rev += e.rev; wk.set(w, x); }
+    const w0 = weekNo(ev[0].n), wA = weekNo(aN);
+    const lastW = wk.has(wA) ? wA : wA - 1;
+    const span = Math.max(1, lastW - w0 + 1);
+    let p = Math.min(1, Math.max(0.05, wk.size / span)), z = ev[0].kg, zr = ev[0].rev;
+    const hist = [];
+    for (let w = w0; w <= lastW; w++) {
+      const x = wk.get(w);
+      if (x && x.kg > 0) { z = TSB_A*x.kg + (1-TSB_A)*z; zr = TSB_A*x.rev + (1-TSB_A)*zr; p = TSB_B + (1-TSB_B)*p; }
+      else p = (1-TSB_B)*p;
+      hist.push(p);
+    }
+    const h26 = hist.slice(-27, -1);
+    res = { p, z, zr, pPrev: hist.length > 1 ? hist[hist.length-2] : p, pAvg: h26.length ? h26.reduce((a,b)=>a+b,0)/h26.length : p, weeks: hist.length };
+  }
+  if (_tsb.size > 60000) _tsb.clear();
+  _tsb.set(key, res);
+  return res;
+}
+function ma8State(cid, asOf){
+  const aN = dayNum(asOf), ev = clientEvents(cid).filter(e => e.n < aN);
+  if (ev.length < 2) return null;
+  const wA = weekNo(aN), lo = weekStartNum(wA - 8), hi = weekStartNum(wA);
+  let kg = 0, rev = 0;
+  for (const e of ev) if (e.n >= lo && e.n < hi) { kg += e.kg; rev += e.rev; }
+  return { kgDay: kg/56, revDay: rev/56 };
+}
+
+// 엔진별 원본 예측 (보정 전). 거래처별 발주일 2일 미만은 0 → 신규 유입분에서 따로 계산
+function expectRaw(engine, cid, start, end, asOf){
+  if (engine === 'legacy') { const r = expectLegacy(cid, start, end, asOf); return { kg:r.kg, rev:r.rev }; }
+  const from = start > asOf ? start : asOf;
+  if (from > end) return { kg:0, rev:0 };
+  const fs = dayFactorSum(from, end, asOf);
+  let kg = 0, rev = 0, k = 0;
+  if (engine === 'tsb' || engine === 'combo') { const t = tsbState(cid, asOf); if (t) { kg += t.p*t.z/7*fs; rev += t.p*t.zr/7*fs; } k++; }
+  if (engine === 'ma8' || engine === 'combo') { const m = ma8State(cid, asOf); if (m) { kg += m.kgDay*fs; rev += m.revDay*fs; } k++; }
+  return { kg: kg/k, rev: rev/k };
+}
+
+// ── 거래처 유형 (보정 단위): 주기 × 월 발주량 ──
+function segOf(cid, asOf){
+  const f = forecastClient(cid, asOf), c = f?.cycle;
+  const cyc = !c ? 'n' : c <= 7 ? 'w' : c <= 20 ? 'b' : 'm';
+  const aN = dayNum(asOf); let kg = 0;
+  for (const e of clientEvents(cid)) { if (e.n >= aN) break; if (e.n >= aN - 90) kg += e.kg; }
+  const m = kg / 3, vol = m < 10 ? 'L' : m < 40 ? 'M' : 'H';
+  return cyc + vol;
+}
+const SEG_LABEL = { w:'주 1회 이상', b:'8~20일 주기', m:'21일 이상 주기', n:'주기 미확정', L:'월 10kg 미만', M:'월 10~40kg', H:'월 40kg 이상' };
+function segName(k){ return SEG_LABEL[k[0]] + ' · ' + SEG_LABEL[k[1]]; }
+
+function monthRange(ym){ const s = ym + '-01', d = parseYMD(s); return [s, new Date(d.getFullYear(), d.getMonth()+1, 0).toYMD()]; }
+function prevMonths(n){
+  const t = parseYMD(todayYMD()), out = [];
+  for (let i = n; i >= 1; i--) out.push(new Date(t.getFullYear(), t.getMonth()-i, 1).toYMD().slice(0,7));
+  return out;
+}
+function firstDataMonth(){ let m = '9999-99'; for (const o of orders) if (o.date && o.date.slice(0,7) < m) m = o.date.slice(0,7); return m; }
+
+// ── 신규·첫 발주 거래처 몫: 그 달 시작 전 발주일 2일 미만이던 거래처의 실제 발주 ──
+function inflowActual(list, ym){
+  const [s, e] = monthRange(ym), sN = dayNum(s), eN = dayNum(e);
+  let kg = 0, rev = 0;
+  for (const c of list) {
+    const ev = clientEvents(c.id); let before = 0;
+    for (const x of ev) { if (x.n < sN) before++; else break; }
+    if (before >= 2) continue;
+    for (const x of ev) if (x.n >= sN && x.n <= eN) { kg += x.kg; rev += x.rev; }
+  }
+  return { kg, rev };
+}
+const _inf = new Map();
+function inflowEstimate(list, ym, tag){
+  const key = _dataVer + '|' + ym + '|' + tag;
+  if (_inf.has(key)) return _inf.get(key);
+  const first = firstDataMonth(), d = parseYMD(ym + '-01'), ms = [];
+  for (let i = 6; i >= 1; i--) { const m = new Date(d.getFullYear(), d.getMonth()-i, 1).toYMD().slice(0,7); if (m > first) ms.push(m); }
+  let v = { kg:0, rev:0, n:0 };
+  if (ms.length >= 2) {
+    const a = ms.map(m => inflowActual(list, m));
+    v = { kg: a.reduce((s,x)=>s+x.kg,0)/a.length, rev: a.reduce((s,x)=>s+x.rev,0)/a.length, n: ms.length };
+  }
+  _inf.set(key, v);
+  return v;
+}
+// 기간 중 오늘 이후 남은 날짜 몫
+function inflowForPeriod(list, S0, E, tag){
+  const tmr = tomorrowYMD(), from = S0 > tmr ? S0 : tmr;
+  if (from > E) return { kg:0, rev:0 };
+  let kg = 0, rev = 0;
+  for (let n = dayNum(from), e = dayNum(E); n <= e; n++) {
+    const d = dayStr(n), ym = d.slice(0,7), dim = dayNum(monthRange(ym)[1]) - dayNum(ym + '-01') + 1;
+    const est = inflowEstimate(list, ym <= todayYMD().slice(0,7) ? ym : todayYMD().slice(0,7), tag);
+    kg += est.kg / dim; rev += est.rev / dim;
+  }
+  return { kg, rev };
+}
+
+// ── 유형별 보정 (최근 3개월 백테스트, 전체 거래중 거래처 기준) ──
+_calCache = null;
+function getCalibration(){
+  const eng = fcEngine();
+  const key = [_dataVer, todayYMD(), eng].join('|');
+  if (_calCache && _calCache.key === key) return _calCache.v;
+  const T = clients.filter(c => c.status === 'active'), first = firstDataMonth();
+  const months = [], segA = {}, segP = {}, segSign = {};
+  for (const ym of prevMonths(3)) {
+    if (ym <= first) continue;
+    const [s, e] = monthRange(ym);
+    let act = 0, pred = 0, abs = 0; const mA = {}, mP = {};
+    for (const c of T) {
+      const a = sumActual(c.id, s, e).kg, p = expectRaw(eng, c.id, s, e, s).kg, g = segOf(c.id, s);
+      act += a; pred += p; abs += Math.abs(a - p);
+      mA[g] = (mA[g]||0) + a; mP[g] = (mP[g]||0) + p;
+    }
+    if (act <= 0) continue;
+    months.push({ month:ym, act, pred, wape:abs/act, aggErr:Math.abs(act-pred)/act, bias:(pred-act)/act });
+    Object.keys(mP).forEach(g => {
+      segA[g] = (segA[g]||0) + (mA[g]||0); segP[g] = (segP[g]||0) + mP[g];
+      if (mP[g] > 0) (segSign[g] ||= []).push(((mA[g]||0) - mP[g]) / mP[g]);
+    });
+  }
+  const seg = {}, biased = [];
+  if (months.length >= 2) {
+    Object.keys(segP).forEach(g => {
+      if (segP[g] >= 30) seg[g] = Math.min(1.3, Math.max(0.7, segA[g] / segP[g]));
+      const sg = segSign[g] || [];
+      if (sg.length >= 3 && (sg.every(x => x > 0.1) || sg.every(x => x < -0.1))) biased.push({ g, dir: sg[0] > 0 ? '과소예측' : '과대예측', avg: sg.reduce((a,b)=>a+b,0)/sg.length });
+    });
+  }
+  const v = { factor:1, months, seg, biased, engine:eng, segApplied:Object.values(seg).filter(f => Math.abs(f-1) > 0.02).length, wape:null, aggErr:null };
+  if (months.length) {
+    v.wape = months.reduce((s,m) => s+m.wape, 0) / months.length;
+    v.aggErr = months.reduce((s,m) => s+m.aggErr, 0) / months.length;
+  }
+  _calCache = { key, v };
+  return v;
+}
+
+// ── 발주약속 (방문기록 promiseDate / promiseKg) ──
+function promisesOf(cid){
+  return (EXTRA.visits||[]).filter(v => String(v.clientId) === String(cid) && v.promiseDate && /^\d{4}-\d{2}-\d{2}/.test(v.promiseDate))
+    .map(v => {
+      const pd = String(v.promiseDate).slice(0,10), kg = parseFloat(v.promiseKg) || 0;
+      const kept = ordersOf(cid).some(o => o.qty > 0 && o.date >= v.date && o.date >= addDaysYMD(pd, -7) && o.date <= addDaysYMD(pd, 7));
+      const status = kept ? 'kept' : todayYMD() > addDaysYMD(pd, 7) ? 'broken' : 'pending';
+      return { date:v.date, pd, kg, status, memo:v.memo||'' };
+    }).sort((a,b) => b.pd.localeCompare(a.pd));
+}
+
+// ── 최종 예측 (화면 전체가 쓰는 함수) ──
+function expectClient(cid, start, end, asOf){
+  const leg = expectLegacy(cid, start, end, asOf);
+  const eng = fcEngine();
+  const raw = eng === 'legacy' ? { kg:leg.kg, rev:leg.rev } : expectRaw(eng, cid, start, end, asOf);
+  const cal = getCalibration(), f = cal.seg[segOf(cid, asOf)] || 1;
+  const out = { kg: raw.kg * f, rev: raw.rev * f, cnt: leg.cnt, dates: leg.dates, f: leg.f };
+  if (asOf >= todayYMD()) {
+    const from = start > asOf ? start : asOf;
+    const pr = promisesOf(cid).find(p => p.status === 'pending' && p.pd >= from && p.pd <= end && p.kg > 0);
+    if (pr && pr.kg > out.kg) {
+      const unit = out.kg > 0 ? out.rev / out.kg : (leg.f && leg.f.qty ? leg.f.rev / leg.f.qty : 0);
+      out.kg = pr.kg; out.rev = pr.kg * unit; out.promise = pr;
+    }
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════
+//  이탈 신호 · 단계
+// ═══════════════════════════════════════════════════════
+const STAGES = {
+  ok:    { label:'정상', tone:'var(--grn-dk)', p:0.05 },
+  watch: { label:'관심', tone:'var(--amb)',    p:0.15, due:'DUE_WATCH', act:'안부 전화, 재고·원두 상태 확인' },
+  warn:  { label:'경고', tone:'#D85A30',       p:0.30, due:'DUE_WARN',  act:'방문: 추출 점검·장비 상태 확인, 시즌 메뉴 제안' },
+  risk:  { label:'위험', tone:'var(--red)',    p:0.55, due:'DUE_RISK',  act:'팀장 공유, 샘플·레시피 가이드 제공, 단가·배송 조건 재검토' },
+  churn: { label:'이탈', tone:'var(--muted)',  p:1,    act:'이탈 사유 기록, 재접촉 일정 잡기' }
+};
+const PRICE_WORDS = /가격|단가|타사|경쟁|비싸|할인|인하/;
+function signalsOf(cid, asOf, opt){
+  asOf = asOf || tomorrowYMD(); opt = opt || {};
+  const f = forecastClient(cid, asOf);
+  if (!f) return null;
+  const aN = dayNum(asOf), days = f.elapsed, ev = clientEvents(cid).filter(e => e.n < aN);
+  const sg = [];
+  // 1 간격
+  sg.push({ k:'gap', short:'간격', on: !!(f.cycle && f.ratio >= S('STAGE_WATCH')),
+    txt: f.cycle ? `${days}일째 미발주 (평소 ${f.cycle}일의 ${f.ratio.toFixed(1)}배)` : `발주 ${f.n}회 · 주기 미확정` });
+  // 2 양
+  let qtxt = '비교할 발주 5회 미만', qon = false;
+  if (ev.length >= 5) {
+    const l3 = ev.slice(-3), p6 = ev.slice(-9, -3);
+    const a = l3.reduce((s,e)=>s+e.kg,0)/3, b = p6.reduce((s,e)=>s+e.kg,0)/p6.length;
+    if (b > 0) { const r = a/b; qon = r <= S('QTY_DROP'); qtxt = `최근 3회 평균 ${r1(a)}kg · 이전 ${r1(b)}kg (${Math.round(r*100)}%)`; }
+  }
+  sg.push({ k:'qty', short:'양↓', on:qon, txt:qtxt });
+  // 3 원두 가짓수
+  const b1 = new Set(), b0 = new Set(), price = {};
+  for (const o of ordersOf(cid)) {
+    if (!o.date || o.qty <= 0) continue; const n = dayNum(o.date); if (n >= aN) break;
+    if (o.bean) { if (n >= aN - 90) b1.add(o.bean); else if (n >= aN - 180) b0.add(o.bean); }
+    if (o.price > 0) (price[o.product || o.bean] ||= []).push({ n, p:o.price });
+  }
+  sg.push({ k:'bean', short:'원두↓', on: b0.size > 0 && b1.size > 0 && b1.size < b0.size, txt: b0.size ? `최근 90일 ${b1.size}종 · 그 전 90일 ${b0.size}종` : '비교 기간 데이터 없음' });
+  // 4 단가 · 타사
+  let pon = false, ptxt = '최근 60일 단가 인하·가격 언급 없음';
+  for (const k in price) {
+    const arr = price[k]; const recent = arr.filter(x => x.n >= aN - 60), older = arr.filter(x => x.n < aN - 60).map(x => x.p).sort((a,b)=>a-b);
+    if (!recent.length || older.length < 2) continue;
+    const med = older[Math.floor(older.length/2)], last = recent[recent.length-1].p;
+    if (last < med * 0.97) { pon = true; ptxt = `${k} 단가 ${Math.round((1-last/med)*100)}% 인하`; break; }
+  }
+  const vis = (EXTRA.visits||[]).filter(v => String(v.clientId) === String(cid) && v.date && dayNum(String(v.date).slice(0,10)) < aN);
+  if (!pon) { const pv = vis.find(v => dayNum(String(v.date).slice(0,10)) >= aN - 60 && PRICE_WORDS.test(v.memo||'')); if (pv) { pon = true; ptxt = `${pv.date} 메모: ${String(pv.memo).slice(0,30)}`; } }
+  sg.push({ k:'price', short:'단가', on:pon, txt:ptxt });
+  // 5 연락 공백
+  const lastV = vis.reduce((m,v) => !m || v.date > m.date ? v : m, null);
+  const gap = lastV ? aN - dayNum(String(lastV.date).slice(0,10)) : null;
+  sg.push({ k:'contact', short:'연락', on: gap !== null && gap >= S('CONTACT_GAP'), txt: gap === null ? '방문·통화 기록 없음' : `마지막 연락 ${gap}일 전` });
+  // 6 발주 확률
+  const t = tsbState(cid, asOf);
+  const pon6 = !!(t && t.pAvg > 0 && t.p < 0.5*t.pAvg && t.pPrev < 0.5*t.pAvg);
+  sg.push({ k:'prob', short:'확률↓', on:pon6, txt: t ? `주간 발주 확률 ${Math.round(t.p*100)}% (평소 ${Math.round(t.pAvg*100)}%)` : '발주 2회 미만' });
+
+  const on = sg.filter(x => x.on && x.k !== 'contact').length, qOn = sg[1].on;
+  const cd = opt.churnDays || churnDays();
+  let stage = 'ok', mult = null;
+  const isNew = f.n <= 3 && diffDays(ev[0].d, dayStr(aN - 1)) <= S('NEW_DAYS');
+  if (excludedIds().has(String(cid))) stage = 'excluded';
+  else if (days >= cd) stage = 'churn';
+  else if (f.cycle) {
+    const r = f.ratio;
+    if (r >= S('STAGE_RISK') || pon) { stage = 'risk'; mult = r >= S('STAGE_RISK') ? S('STAGE_RISK') : null; }
+    else if (r >= S('STAGE_WARN') || on >= 2) { stage = 'warn'; mult = r >= S('STAGE_WARN') ? S('STAGE_WARN') : null; }
+    else if (r >= S('STAGE_WATCH') || qOn) { stage = 'watch'; mult = r >= S('STAGE_WATCH') ? S('STAGE_WATCH') : null; }
+  } else {
+    if (days > S('NEW_DAYS')) stage = 'warn';
+    else if (days > 30) stage = 'watch';
+  }
+  let start = null, deadline = null, handled = false, overdue = false;
+  if (STAGES[stage]?.due) {
+    start = mult ? addDaysYMD(f.last, Math.ceil(mult * f.cycle)) : (f.cycle ? f.last : addDaysYMD(f.last, 30));
+    if (start > dayStr(aN - 1)) start = dayStr(aN - 1);
+    deadline = addDaysYMD(start, S(STAGES[stage].due));
+    handled = vis.some(v => String(v.date).slice(0,10) >= start);
+    overdue = !handled && dayStr(aN - 1) > deadline;
+  }
+  // 월평균 매출 (최근 180일, 거래 기간이 짧으면 그 기간으로)
+  let rev = 0; const lo = aN - 180;
+  for (const e of ev) if (e.n >= lo) rev += e.rev;
+  const months = Math.max(1, Math.min(6, (aN - Math.max(lo, ev[0].n)) / 30.4));
+  return { cid, stage, signals:sg, on, days, f, start, deadline, handled, overdue, monthRev: rev/months, isNew };
+}
+
+// 단계별 실제 이탈률 (churnDays 전 시점의 단계 → 그 뒤 churnDays 동안 발주 없었는지)
+let _stageP = null;
+function stageValidation(){
+  const cd = churnDays(), key = _dataVer + '|' + todayYMD() + '|' + cd + '|' + JSON.stringify(EXTRA.settings||{});
+  if (_stageP && _stageP.key === key) return _stageP.v;
+  const asOf = addDaysYMD(todayYMD(), -cd), aN = dayNum(asOf), tN = dayNum(todayYMD());
+  const by = {}, scored = [];
+  for (const c of clients) {
+    const ev = clientEvents(c.id);
+    const before = ev.filter(e => e.n < aN);
+    if (!before.length || aN - before[before.length-1].n > cd || aN - before[before.length-1].n > 180) continue;
+    const s = signalsOf(c.id, asOf, { churnDays: cd });
+    if (!s || s.stage === 'excluded' || s.stage === 'churn') continue;
+    const churned = !ev.some(e => e.n >= aN && e.n <= tN);
+    (by[s.stage] ||= { n:0, c:0 }); by[s.stage].n++; if (churned) by[s.stage].c++;
+    scored.push({ score: s.f.churn, churned });
+  }
+  const p = {};
+  Object.keys(STAGES).forEach(k => { const b = by[k]; p[k] = b && b.n >= 15 ? Math.max(0.02, b.c / b.n) : STAGES[k].p; });
+  p.churn = 1;
+  scored.sort((a,b) => b.score - a.score);
+  const totC = scored.filter(x => x.churned).length, top = scored.slice(0, Math.ceil(scored.length * 0.2));
+  const capture = totC ? top.filter(x => x.churned).length / totC : null;
+  const v = { asOf, by, p, capture, n:scored.length, churned:totC };
+  _stageP = { key, v };
+  return v;
+}
+
+// 거래중 거래처의 단계·기대 손실 목록 (담당자 필터 반영)
+let _board = null;
+function churnBoard(){
+  const key = v31Key() + '|' + managerFilter;
+  if (_board && _board.key === key) return _board.v;
+  const P = stageValidation().p, L = S('LOSS_MONTHS'), list = [];
+  for (const c of filterByManager(clients)) {
+    if (c.status !== 'active') continue;
+    const s = signalsOf(c.id);
+    if (!s || s.stage === 'excluded') continue;
+    s.c = c; s.loss = (P[s.stage] ?? 0) * s.monthRev * L;
+    list.push(s);
+  }
+  list.sort((a,b) => b.loss - a.loss);
+  _board = { key, v:list };
+  return list;
+}
+function churnLogOf(cid){ return (EXTRA.churnLog||[]).filter(x => String(x.clientId) === String(cid)).sort((a,b) => String(b.date).localeCompare(String(a.date)))[0] || null; }
+
+// ═══════════════════════════════════════════════════════
+//  홈
+// ═══════════════════════════════════════════════════════
+function renderHome(){ _renderHomeBase(); renderKPI(); renderToday(); renderChurnBoard(); renderTargets(); }
+function wonShort(v){ v = Math.round(v||0); return Math.abs(v) >= 1e8 ? (v/1e8).toFixed(1) + '억' : Math.abs(v) >= 1e4 ? Math.round(v/1e4).toLocaleString() + '만' : v.toLocaleString(); }
+function scrollToId(id){ document.getElementById(id)?.scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+function renderKPI(){
+  const el = document.getElementById('home-kpi'); if (!el) return;
+  const today = todayYMD(), tmr = tomorrowYMD(), ym = today.slice(0,7), [mS, mE] = monthRange(ym);
+  const inMgr = o => !managerFilter || mgrOfOrder(o) === managerFilter;
+  const dIdx = parseInt(today.slice(8,10));
+  const pd = parseYMD(mS); const pS = new Date(pd.getFullYear(), pd.getMonth()-1, 1).toYMD(), pE = addDaysYMD(pS, dIdx - 1);
+  let rev = 0, prev = 0;
+  for (const o of orders) { if (!o.date || !inMgr(o)) continue; if (o.date >= mS && o.date <= today) rev += o.amount||0; else if (o.date >= pS && o.date <= pE && o.date < mS) prev += o.amount||0; }
+  const chg = prev > 0 ? Math.round((rev/prev - 1)*100) : null;
+  const T = filterByManager(clients);
+  const byM = {};
+  for (const o of orders) { if (o.date >= mS && o.date <= today && inMgr(o)) { const m = mgrOfOrder(o); byM[m] = (byM[m]||0) + (o.amount||0); } }
+  let exp = 0;
+  for (const c of T) if (c.status === 'active') { const v = expectClient(c.id, mS, mE, tmr).rev, m = String(c.manager||'').trim() || NO_MGR; exp += v; byM[m] = (byM[m]||0) + v; }
+  const inf = inflowForPeriod(T, mS, mE, 'kpi|' + managerFilter);
+  const proj = rev + exp + inf.rev;
+  const tg = (EXTRA.targets||[]).filter(t => t.month === ym && t.rev > 0 && (!managerFilter || t.manager === managerFilter));
+  const goalRev = tg.reduce((s,t) => s + t.rev, 0), projT = tg.reduce((s,t) => s + (byM[t.manager]||0), 0);
+  const d3 = addDaysYMD(today, 3); let dueN = 0, dueKg = 0;
+  for (const c of T) { if (c.status !== 'active') continue; const f = forecastClient(c.id, tmr); if (!f || !f.cycle || f.ratio > 1.5) continue; if (businessDay(f.nextDue) <= d3) { dueN++; dueKg += f.qty; } }
+  const B = churnBoard(), hot = B.filter(s => s.stage === 'warn' || s.stage === 'risk'), od = hot.filter(s => s.overdue).length;
+  const loss = hot.reduce((s,x) => s + x.loss, 0);
+  const tile = (id, label, val, sub, tone) => `<button class="kpi" onclick="scrollToId('${id}')"><span class="kpi-l">${label}</span><span class="kpi-v"${tone?` style="color:${tone}"`:''}>${val}</span><span class="kpi-s">${sub}</span></button>`;
+  el.innerHTML = `<div class="kpi-grid">
+    ${tile('hq-card', '이번 달 매출', '₩' + wonShort(rev), chg === null ? `${dIdx}일까지 실적` : `전월 같은 기간 ${chg>=0?'+':''}${chg}%`, null)}
+    ${tile('hq-card', '월말 예상', '₩' + wonShort(proj), goalRev ? `목표 대비 ${Math.round(projT/goalRev*100)}%${tg.length < 5 && !managerFilter ? ` (${tg.map(t=>t.manager).join('·')})` : ''}` : `예측 엔진: ${ENGINES[fcEngine()].split(' ')[0]}`, goalRev ? (projT >= goalRev ? 'var(--grn-dk)' : projT >= goalRev*0.85 ? 'var(--amb)' : 'var(--red)') : null)}
+    ${tile('home-today', '3일 안 발주 예정', dueN + '곳', `약 ${Math.round(dueKg).toLocaleString()}kg`, 'var(--grn-dk)')}
+    ${tile('home-churn', '이탈 방어 (경고·위험)', hot.length + '곳', od ? `기한 지남 ${od}곳 · ₩${wonShort(loss)} 위험` : `₩${wonShort(loss)} 위험`, hot.length ? 'var(--red)' : null)}
+  </div>`;
+}
+
+const _todayOpenV = { due:false, promise:false, stock:false, recontact:false };
+function toggleToday(k){ _todayOpenV[k] = !_todayOpenV[k]; renderToday(); }
+function renderToday(){
+  const el = document.getElementById('home-today'); if (!el) return;
+  const today = todayYMD(), tmr = tomorrowYMD(), d3 = addDaysYMD(today, 3);
+  const due = [], promise = [], recontact = [];
+  for (const c of filterByManager(clients)) {
+    if (c.status !== 'active') continue;
+    const f = forecastClient(c.id, tmr);
+    if (f && f.cycle && f.ratio <= 1.5) { const nd = businessDay(f.nextDue); if (nd <= d3) due.push({ c, f, nd }); }
+    for (const p of promisesOf(c.id)) {
+      if ((p.status === 'pending' && p.pd <= d3) || (p.status === 'broken' && diffDays(addDaysYMD(p.pd, 7), today) <= 14)) promise.push({ c, p });
+    }
+  }
+  for (const r of (EXTRA.churnLog||[])) {
+    if (!r.recontact || String(r.recontact).slice(0,10) > addDaysYMD(today, 7)) continue;
+    const c = getClient(r.clientId); if (!c || (managerFilter && (c.manager||'') !== managerFilter)) continue;
+    const l = lastOrder(c.id); if (l && l.date > String(r.date).slice(0,10)) continue;     // 이미 재발주
+    recontact.push({ c, r });
+  }
+  due.sort((a,b) => a.nd.localeCompare(b.nd));
+  promise.sort((a,b) => (a.p.status === 'broken' ? -1 : 0) - (b.p.status === 'broken' ? -1 : 0) || a.p.pd.localeCompare(b.p.pd));
+  const stock = [];
+  [...new Set(inventory.map(i => i.bean).filter(Boolean))].forEach(b => { const s = calcBeanStock(b); if (s && s.daysLeft !== null && s.daysLeft < 14) stock.push({ b, s }); });
+  stock.sort((a,b) => a.s.daysLeft - b.s.daysLeft);
+  const row = (c, sub, right) => `
+    <div class="td-row" onclick="openOrderDetail(${jsArg(c.id)})">
+      <div style="flex:1;min-width:0;"><div class="td-name">${c.name}</div><div class="td-sub">${sub}</div></div>
+      <div class="td-right">${right}</div>${telLink(c.phone)}
+    </div>`;
+  const group = (k, title, tone, list, render, empty) => {
+    if (!list.length && empty === null) return '';
+    const shown = _todayOpenV[k] ? list.slice(0, 40) : list.slice(0, 5);
+    return `<div class="td-group">
+      <div class="td-head"><span class="td-title" style="color:${tone}">${title}</span><span class="td-count">${list.length}</span></div>
+      ${list.length ? shown.map(render).join('') : `<div class="no-data">${empty}</div>`}
+      ${list.length > 5 ? `<button class="td-more" onclick="toggleToday('${k}')">${_todayOpenV[k] ? '접기' : `${list.length-5}곳 더 보기`}</button>` : ''}
+    </div>`;
+  };
+  const age = EXTRA.syncedAt ? daysAgo(new Date(EXTRA.syncedAt).toYMD()) : null;
+  const syncHint = !EXTRA.syncedAt
+    ? `<div class="sync-hint">아직 시트 데이터를 받지 않아 예시 데이터가 보입니다. <button class="btn xs green" onclick="syncNow()">지금 동기화</button></div>`
+    : age >= 3 ? `<div class="sync-hint">마지막 동기화 ${age}일 전 · 최신 실적이 아닐 수 있습니다. <button class="btn xs" onclick="syncNow()">동기화</button></div>` : '';
+  el.innerHTML = syncHint + `<div class="sec-title">오늘 할 일</div><div class="card td-card"><div class="card-bd">
+    ${group('due', '발주 예정 · 3일 안', 'var(--grn-dk)', due, x => {
+      const dd = diffDays(today, x.nd);
+      return row(x.c, `${x.c.manager||'-'} · ${fmtMD(x.nd)} ${dd>0?`D-${dd}`:dd===0?'오늘':`${-dd}일 지남`}`, `${r1(x.f.qty)}kg`);
+    }, '3일 안에 예정된 발주가 없습니다')}
+    ${group('promise', '발주 약속', 'var(--amb)', promise, x => row(x.c,
+      `${x.c.manager||'-'} · 약속 ${fmtMD(x.p.pd)}${x.p.status === 'broken' ? ' · <b style="color:var(--red)">약속일 지남</b>' : ''}`, x.p.kg ? `${r1(x.p.kg)}kg` : ''), null)}
+    ${group('recontact', '재접촉 예정 (이탈 거래처)', 'var(--muted)', recontact, x => row(x.c,
+      `${x.c.manager||'-'} · ${fmtMD(String(x.r.recontact).slice(0,10))} · 사유: ${x.r.reason||'-'}`, ''), null)}
+    ${group('stock', '재고 2주 안 소진', 'var(--amb)', stock, x => `
+      <div class="td-row" onclick="switchPage('inventory', document.querySelector('.ni[onclick*=inventory]'))">
+        <div style="flex:1;"><div class="td-name">${x.b}</div><div class="td-sub">잔량 ${r1(x.s.remain)}kg · ${x.s.exhaustDate} 소진 예상</div></div>
+        <div class="td-right">${x.s.need30>0?`입고 ${x.s.need30}kg`:''}</div>
+      </div>`, null)}
+  </div></div>`;
+}
+
+const _boardOpen = { risk:false, warn:false, watch:false };
+function toggleBoard(k){ _boardOpen[k] = !_boardOpen[k]; renderChurnBoard(); }
+function renderChurnBoard(){
+  const el = document.getElementById('home-churn'); if (!el) return;
+  const B = churnBoard(), today = todayYMD(), cd = churnDays();
+  const churned = filterByManager(clients).filter(c => c.status === 'active' && isOD(c));
+  const noReason = churned.filter(c => !churnLogOf(c.id)).length;
+  const share = settingStr('RISK_SHARE', 'Y') === 'Y';
+  const rowH = s => {
+    const st = STAGES[s.stage], chips = s.signals.filter(x => x.on).map(x => `<span class="sig-chip">${x.short}</span>`).join('');
+    const dl = s.handled ? `<span class="due ok">대응함</span>` : s.overdue ? `<span class="due late">기한 ${diffDays(s.deadline, today)}일 지남</span>` : s.deadline ? `<span class="due">D-${Math.max(0, diffDays(today, s.deadline))}</span>` : '';
+    return `<div class="td-row" onclick="openOrderDetail(${jsArg(s.c.id)})">
+      <div style="flex:1;min-width:0;">
+        <div class="td-name">${s.c.name}${s.isNew ? ' <span class="sig-chip new">신규</span>' : ''}${s.stage === 'risk' && share ? ' <span class="sig-chip share">팀 공유</span>' : ''}</div>
+        <div class="td-sub">${s.c.manager||'-'} · ${s.days}일째${s.f.cycle ? ` (주기 ${s.f.cycle}일)` : ''} ${chips}</div>
+      </div>
+      <div class="td-right" style="text-align:right;"><div style="color:${st.tone}">₩${wonShort(s.loss)}</div>${dl}</div>${telLink(s.c.phone)}
+    </div>`;
+  };
+  const grp = k => {
+    const L = B.filter(s => s.stage === k), st = STAGES[k];
+    const shown = _boardOpen[k] ? L.slice(0, 50) : L.slice(0, 5);
+    return `<div class="td-group">
+      <div class="td-head"><span class="td-title" style="color:${st.tone}">${st.label} · ${S(st.due)}일 안 ${st.act.split(',')[0]}</span><span class="td-count">${L.length}</span></div>
+      ${L.length ? shown.map(rowH).join('') : '<div class="no-data">해당 거래처 없음</div>'}
+      ${L.length > 5 ? `<button class="td-more" onclick="toggleBoard('${k}')">${_boardOpen[k] ? '접기' : `${L.length-5}곳 더 보기`}</button>` : ''}
+    </div>`;
+  };
+  el.innerHTML = `<div class="sec-title">이탈 방어 <span class="sec-note">잃을 수 있는 매출 순 (단계별 실제 이탈률 × 월평균 매출 × ${S('LOSS_MONTHS')}개월)</span></div>
+  <div class="card td-card"><div class="card-bd">
+    ${grp('risk')}${grp('warn')}${grp('watch')}
+    <div class="td-group"><div class="td-row" onclick="openOverdueModal()">
+      <div style="flex:1;"><div class="td-name" style="color:var(--muted)">이탈 · ${cd}일 이상 무발주</div><div class="td-sub">${noReason ? `사유 미기록 ${noReason}곳 · 거래처 상세에서 사유와 재접촉일을 기록하세요` : '사유 모두 기록됨'}</div></div>
+      <div class="td-right" style="color:var(--muted)">${churned.length}곳 ›</div></div></div>
+  </div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  거래처 상세: 신호 카드 · 대응 기록 · 이탈 사유
+// ═══════════════════════════════════════════════════════
+function openOrderDetail(cid){
+  _openOrderDetailBase(cid);
+  const body = document.getElementById('sh-od-body');
+  if (!body) return;
+  const box = document.createElement('div');
+  box.innerHTML = v3DetailBlock(cid);
+  body.insertBefore(box, body.children[1] || null);
+}
+function v3DetailBlock(cid){
+  const c = getClient(cid) || {}, today = todayYMD();
+  const f = forecastClient(cid, tomorrowYMD()), s = signalsOf(cid);
+  const ex = expectClient(cid, tomorrowYMD(), addDaysYMD(today, 30), tomorrowYMD());
+  const visits = (EXTRA.visits||[]).filter(v => String(v.clientId) === String(cid)).sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0, 6);
+  const nd = f && f.cycle ? businessDay(f.nextDue) : null, dd = nd ? diffDays(today, nd) : null;
+  const map = c.address ? `<a class="btn sm" href="https://map.naver.com/p/search/${encodeURIComponent(c.address)}" target="_blank" rel="noopener">지도</a>` : '';
+  const phone = String(c.phone||'').replace(/[^0-9+]/g, '');
+  const st = s ? STAGES[s.stage] : null, P = stageValidation().p;
+  const cl = churnLogOf(cid);
+  const sigCard = s && st ? `
+    <div class="sig-card" style="border-color:${st.tone}">
+      <div class="sig-top"><span class="stage-badge" style="background:${st.tone}">${st.label}</span>
+        <span class="sig-act">${st.act}</span></div>
+      ${s.deadline ? `<div class="sig-due">${s.handled ? '✓ 단계 진입 후 연락 기록 있음' : s.overdue ? `<b style="color:var(--red)">대응 기한 ${fmtMD(s.deadline)} · ${diffDays(s.deadline, today)}일 지남</b>` : `대응 기한 ${fmtMD(s.deadline)} (D-${Math.max(0, diffDays(today, s.deadline))})`}</div>` : ''}
+      ${s.stage !== 'ok' && s.stage !== 'excluded' ? `<div class="sig-due">이 단계의 실제 이탈률 ${Math.round((P[s.stage]||0)*100)}% · 잃을 수 있는 매출 ₩${wonShort((P[s.stage]||0) * s.monthRev * S('LOSS_MONTHS'))}</div>` : ''}
+      <div class="sig-list">${s.signals.map(x => `<div class="sig-row${x.on ? ' on' : ''}"><span class="sig-dot">${x.on ? '!' : '·'}</span><b>${x.short}</b><span>${x.txt}</span></div>`).join('')}</div>
+    </div>` : '';
+  const churnForm = s && s.stage === 'churn' ? `
+    <div class="v3-visit-form" style="margin-top:8px;">
+      <select id="ch-reason"><option>가격·단가</option><option>타사 전환</option><option>폐업·휴업</option><option>메뉴·콘셉트 변경</option><option>품질·맛</option><option>배송·서비스</option><option>연락 두절</option><option>기타</option></select>
+      <input type="date" id="ch-recontact" value="${addDaysYMD(today, 90)}" title="재접촉일">
+      <input type="text" id="ch-memo" placeholder="메모 (선택)">
+      <button class="btn sm primary" onclick="saveChurnV31(${jsArg(cid)})">이탈 사유 저장</button>
+    </div>
+    ${cl ? `<div class="v3-visit">기록됨: <b>${String(cl.date).slice(0,10)}</b> ${cl.reason||''} · 재접촉 ${String(cl.recontact||'').slice(0,10)}</div>` : ''}` : '';
+  const pr = promisesOf(cid).slice(0, 3);
+  return `
+  <div class="v3-detail">
+    ${f && f.cycle ? `<div class="v3-fc">
+      <div><div class="mini-l">다음 예상 발주</div><div class="v3-fc-v">${fmtMD(nd)} <small style="color:${dd<0?'var(--red)':'var(--muted)'}">${dd>0?`D-${dd}`:dd===0?'오늘':`${-dd}일 지남`}</small></div></div>
+      <div><div class="mini-l">30일 예상</div><div class="v3-fc-v">${r1(ex.kg)}<small>kg</small></div></div>
+      <div><div class="mini-l">월평균 매출</div><div class="v3-fc-v">₩${wonShort(s ? s.monthRev : 0)}</div></div>
+    </div>` : ''}
+    ${sigCard}${churnForm}
+    <div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap;">
+      ${phone?`<a class="btn sm green" href="tel:${phone}">전화 ${c.phone}</a>`:''}${map}
+    </div>
+    <div class="mini-l" style="margin-bottom:6px;">방문·통화 기록</div>
+    <div class="v3-visit-form">
+      <input type="date" id="vs-date" value="${today}">
+      <select id="vs-type"><option>방문</option><option>통화</option><option>메시지</option><option>발주약속</option></select>
+      <select id="vs-result"><option value="">결과 선택</option><option>정상 확인</option><option>재발주 약속</option><option>보류</option><option>이탈 확인</option></select>
+      <input type="text" id="vs-memo" placeholder="내용 (예: 추출 점검, 아이스 메뉴 제안)">
+      <input type="date" id="vs-pdate" title="발주 약속일 (선택)">
+      <input type="number" id="vs-pkg" min="0" step="0.5" placeholder="약속 수량 kg (선택)">
+      <button class="btn sm primary" onclick="saveVisitV3(${jsArg(cid)})">기록 저장</button>
+    </div>
+    ${pr.length ? pr.map(p => `<div class="v3-visit">약속 <b>${fmtMD(p.pd)}</b> ${p.kg?r1(p.kg)+'kg':''} · <span style="color:${p.status==='kept'?'var(--grn-dk)':p.status==='broken'?'var(--red)':'var(--amb)'}">${p.status==='kept'?'지킴':p.status==='broken'?'미이행':'대기'}</span></div>`).join('') : ''}
+    ${visits.length ? visits.map(v => `<div class="v3-visit"><b>${v.date}</b> <span class="v3-vt">${v.type||''}</span>${v.result?` <span class="v3-vt res">${v.result}</span>`:''} ${v.memo||''}</div>`).join('') : '<div class="no-data">아직 기록이 없습니다</div>'}
+  </div>`;
+}
+function saveVisitV3(cid){
+  const c = getClient(cid) || {};
+  const g = id => document.getElementById(id)?.value || '';
+  const date = g('vs-date') || todayYMD(), type = g('vs-type') || '방문', result = g('vs-result'), memo = g('vs-memo').trim();
+  const promiseDate = g('vs-pdate'), promiseKg = parseFloat(g('vs-pkg')) || '';
+  if (!memo && !result && !promiseDate && type !== '방문') { showToast('내용이나 결과를 입력하세요'); return; }
+  const data = { date, clientId:cid, clientName:c.name||'', manager:c.manager||'', type, memo, result, promiseDate, promiseKg };
+  EXTRA.visits = [...(EXTRA.visits||[]), { ...data, id:'local-'+Date.now() }];
+  saveExtra();
+  apiPost({ action:'saveVisit', data });
+  showToast('기록을 저장했습니다');
+  openOrderDetail(cid); renderHome();
+}
+function saveChurnV31(cid){
+  const c = getClient(cid) || {}, l = lastOrder(cid);
+  const g = id => document.getElementById(id)?.value || '';
+  const data = { date: todayYMD(), clientId:cid, clientName:c.name||'', manager:c.manager||'', lastOrder: l ? l.date : '',
+    days: l ? daysAgo(l.date) : '', reason: g('ch-reason') + (g('ch-memo').trim() ? ' · ' + g('ch-memo').trim() : ''), recontact: g('ch-recontact') };
+  EXTRA.churnLog = [...(EXTRA.churnLog||[]), data];
+  saveExtra();
+  apiPost({ action:'saveChurn', data });
+  showToast('이탈 사유를 저장했습니다');
+  openOrderDetail(cid); renderHome();
+}
+
+// ═══════════════════════════════════════════════════════
+//  분석: 예측 정확도 · 엔진 비교 · 이탈 단계 검증
+// ═══════════════════════════════════════════════════════
+function runAccuracy(){
+  const el = document.getElementById('acc-body'); if (!el) return;
+  showLoading('지난 달들을 다시 예측해 비교하는 중...');
+  setTimeout(() => { try { el.innerHTML = accuracyHTML(); } catch(e) { el.innerHTML = `<div class="no-data" style="color:var(--red)">계산 실패: ${e.message}</div>`; } finally { hideLoading(); } }, 30);
+}
+function accuracyHTML(){
+  const first = firstDataMonth(), ms = prevMonths(9).filter(m => m > first);
+  if (ms.length < 3) return '<div class="no-data">비교하려면 발주 데이터가 3개월 이상 필요합니다</div>';
+  const T = clients.filter(c => c.status === 'active'), all = clients;
+  const act = {}, segOfM = {};
+  ms.forEach(m => { const [s,e] = monthRange(m); act[m] = new Map(T.map(c => [c.id, sumActual(c.id, s, e).kg])); segOfM[m] = new Map(T.map(c => [c.id, segOf(c.id, s)])); });
+  const totAct = {}; ms.forEach(m => { const [s,e] = monthRange(m); let k = 0; for (const o of orders) if (o.date >= s && o.date <= e) k += o.qty||0; totAct[m] = k; });
+  const inflow = {}; ms.forEach(m => inflow[m] = inflowEstimate(all, m, 'acc').kg);
+  const res = {};
+  for (const E of Object.keys(ENGINES)) {
+    const per = {};
+    ms.forEach(m => {
+      const [s,e] = monthRange(m); let A=0, P=0, abs=0; const sA = {}, sP = {}, pc = new Map();
+      for (const c of T) { const a = act[m].get(c.id), p = expectRaw(E, c.id, s, e, s).kg, g = segOfM[m].get(c.id);
+        A += a; P += p; abs += Math.abs(a-p); sA[g]=(sA[g]||0)+a; sP[g]=(sP[g]||0)+p; pc.set(c.id, p); }
+      per[m] = { A, P, abs, sA, sP, pc };
+    });
+    const test = ms.filter((m,i) => i >= 2);
+    let eRaw=0, eCal=0, eTot=0, wape=0, bRaw=0, bTot=0;
+    test.forEach(m => {
+      const i = ms.indexOf(m), prior = ms.slice(Math.max(0, i-3), i);
+      const fA = {}, fP = {}; prior.forEach(pm => { for (const g in per[pm].sP) { fA[g]=(fA[g]||0)+(per[pm].sA[g]||0); fP[g]=(fP[g]||0)+per[pm].sP[g]; } });
+      let Pc = 0; for (const c of T) { const g = segOfM[m].get(c.id), f = fP[g] >= 30 ? Math.min(1.3, Math.max(0.7, fA[g]/fP[g])) : 1; Pc += per[m].pc.get(c.id) * f; }
+      const r = per[m], tot = Pc + inflow[m], ta = totAct[m] || r.A;
+      eRaw += Math.abs(r.A - r.P)/r.A; eCal += Math.abs(r.A - Pc)/r.A; eTot += Math.abs(ta - tot)/ta;
+      wape += r.abs/r.A; bRaw += (r.P - r.A)/r.A; bTot += (tot - ta)/ta;
+    });
+    const n = test.length;
+    res[E] = { eRaw:eRaw/n, eCal:eCal/n, eTot:eTot/n, wape:wape/n, bRaw:bRaw/n, bTot:bTot/n, n, test };
+  }
+  const best = Object.keys(res).reduce((b,k) => res[k].eTot < res[b].eTot ? k : b, 'legacy');
+  const cur = fcEngine(), pct = v => Math.round(v*100) + '%', sgn = v => (v>=0?'+':'') + Math.round(v*100) + '%';
+  const L = res.legacy, B = res[best];
+  const sv = stageValidation(), cal = getCalibration();
+  const logs = (EXTRA.fcLog||[]).filter(x => x.month < todayYMD().slice(0,7));
+  const logMonths = [...new Set(logs.map(x => x.month))].sort().reverse().slice(0, 6);
+  const mAct = m => { const [s,e] = monthRange(m); let k=0; for (const o of orders) if (o.date >= s && o.date <= e) k += o.qty||0; return k; };
+  return `
+    <div class="acc-key">기존 방식의 월 합계 오차 <b>${pct(L.eTot)}</b> → ${best === 'legacy' ? '기존 방식이 가장 정확합니다' : `<b>${ENGINES[best]}</b> 사용 시 <b style="color:var(--grn-dk)">${pct(B.eTot)}</b>`}</div>
+    <div class="pf-note">최근 ${L.n}개월(${L.test[0]}~${L.test[L.test.length-1]})을 각 달 1일 시점에서 다시 예측해 실제와 비교했습니다. '보정+신규'는 직전 3개월로 정한 유형별 보정과 신규 거래처 몫을 더한 값으로, 실제 화면에 나오는 숫자와 같은 방식입니다.</div>
+    <table class="hq-table acc-t">
+      <thead><tr><th>엔진</th><th>월 합계 오차<br>(원본)</th><th>보정+신규</th><th>거래처별<br>오차</th><th>편향</th></tr></thead>
+      <tbody>${Object.keys(ENGINES).map(k => { const r = res[k]; return `<tr class="${k===best?'acc-best':''}">
+        <td>${ENGINES[k]}${k===cur?' <small>(사용 중)</small>':''}</td><td>${pct(r.eRaw)}</td><td><b>${pct(r.eTot)}</b></td><td>${pct(r.wape)}</td><td>${sgn(r.bTot)}</td></tr>`; }).join('')}</tbody>
+    </table>
+    ${best !== cur ? `<button class="btn sm primary" style="margin:4px 0 10px;" onclick="setEngineView('${best}')">이 기기에서 ${ENGINES[best]} 엔진 써보기</button><div class="pf-note">팀 전체에 적용하려면 시트 설정 탭 FC_ENGINE 값을 <b>${best}</b>로 바꾸세요.</div>` : ''}
+    ${cal.biased.length ? `<div class="hq-sub">3개월 연속 한 방향으로 틀린 유형 (사용 중 엔진)</div>${cal.biased.map(b => `<div class="hl-row"><span>${segName(b.g)}</span><b style="color:var(--amb)">${b.dir} ${Math.abs(Math.round(b.avg*100))}%</b></div>`).join('')}` : ''}
+    <div class="hq-sub" style="margin-top:12px;">이탈 단계 검증 (${sv.asOf} 시점 단계 → 이후 ${churnDays()}일 무발주 비율)</div>
+    ${['ok','watch','warn','risk'].map(k => { const b = sv.by[k]; return `<div class="hl-row"><span style="color:${STAGES[k].tone}">${STAGES[k].label}</span><b>${b ? `${b.n}곳 중 ${b.c}곳 이탈 (${Math.round(b.c/b.n*100)}%)` : '해당 없음'}</b></div>`; }).join('')}
+    <div class="hl-row"><span>위험 점수 상위 20%가 잡아낸 이탈</span><b>${sv.capture === null ? '이탈 사례 없음' : pct(sv.capture) + ` (이탈 ${sv.churned}곳)`}</b></div>
+    <div class="pf-note">위 이탈률이 홈 '이탈 방어'의 잃을 수 있는 매출 계산에 쓰입니다 (단계별 15곳 미만이면 기본값).</div>
+    ${logMonths.length ? `<div class="hq-sub" style="margin-top:12px;">예측기록 탭에 저장된 예측 vs 실제</div>
+      <table class="hq-table"><thead><tr><th>월</th><th>엔진</th><th>기록 예측</th><th>실제</th><th>오차</th></tr></thead><tbody>
+      ${logMonths.map(m => { const a = mAct(m), inf = logs.find(x => x.month === m && x.engine === 'inflow')?.kg || 0;
+        return logs.filter(x => x.month === m && x.engine !== 'inflow').map(x => { const p = x.kg + inf; return `<tr><td>${m}</td><td>${ENGINES[x.engine]||x.engine}</td><td>${Math.round(p).toLocaleString()}kg</td><td>${Math.round(a).toLocaleString()}kg</td><td>${a?sgn((p-a)/a):'-'}</td></tr>`; }).join(''); }).join('')}
+      </tbody></table>` : '<div class="pf-note" style="margin-top:8px;">예측기록 탭은 매달 첫 동기화 때 자동으로 쌓입니다. 다음 달부터 위 백테스트와 별도로 실제 기록 기반 비교가 표시됩니다.</div>'}`;
+}
+
+// ── 매달 첫 동기화 때 예측 스냅샷을 시트 예측기록 탭에 저장 ──
+async function maybeLogForecast(){
+  const ym = todayYMD().slice(0,7);
+  if (!Array.isArray(EXTRA.fcLog)) return;     // Apps Script v31 이전이면 건너뜀
+  if ((EXTRA.fcLog||[]).some(x => x.month === ym) || EXTRA.fcLoggedLocal === ym || !API_URL) return;
+  const [s, e] = monthRange(ym), rows = [];
+  for (const c of clients) {
+    if (c.status !== 'active') continue;
+    for (const E of Object.keys(ENGINES)) { const r = expectRaw(E, c.id, s, e, s); if (r.kg > 0.05) rows.push([c.id, c.name, c.manager||'', E, r1(r.kg), Math.round(r.rev)]); }
+  }
+  const inf = inflowEstimate(clients, ym, 'log');
+  rows.push(['NEW', '신규·첫 발주 예상분', '', 'inflow', r1(inf.kg), Math.round(inf.rev)]);
+  const j = await apiPost({ action:'saveForecastLog', data:{ month:ym, rows } });
+  if (j && j.ok) {
+    EXTRA.fcLoggedLocal = ym;
+    const sum = {}; rows.forEach(r => { const k = r[3]; (sum[k] ||= { month:ym, engine:k, kg:0, rev:0, n:0 }); sum[k].kg += r[4]; sum[k].rev += r[5]; sum[k].n++; });
+    if (!j.skipped) EXTRA.fcLog = [...(EXTRA.fcLog||[]).filter(x => x.month !== ym), ...Object.values(sum)];
+    saveExtra();
+  }
+}
+
+// ── 설정 탭: 팀 기준 보기 ──
+function renderV31Settings(){
+  const el = document.getElementById('v31-settings'); if (!el) return;
+  const rows = [
+    ['이탈 기준', `${teamChurnDays()}일 무발주`, churnDays() !== teamChurnDays() ? `이 기기: ${churnDays()}일` : ''],
+    ['관심 / 경고 / 위험', `주기의 ${S('STAGE_WATCH')} / ${S('STAGE_WARN')} / ${S('STAGE_RISK')}배`, ''],
+    ['양 감소 신호', `최근 3회가 이전의 ${Math.round(S('QTY_DROP')*100)}% 이하`, ''],
+    ['연락 공백 신호', `${S('CONTACT_GAP')}일`, ''],
+    ['대응 기한', `관심 ${S('DUE_WATCH')}일 · 경고 ${S('DUE_WARN')}일 · 위험 ${S('DUE_RISK')}일`, ''],
+    ['기대 손실 기간', `${S('LOSS_MONTHS')}개월`, ''],
+    ['신규 거래처 기간', `첫 발주 후 ${S('NEW_DAYS')}일`, ''],
+    ['위험 단계 팀 공유', settingStr('RISK_SHARE','Y') === 'Y' ? '표시' : '표시 안 함', ''],
+    ['이탈 판정 제외', settingStr('CHURN_EXCLUDE','') || '없음', '']
+  ];
+  const hf = holidayPreFactor();
+  el.innerHTML = rows.map(r => `<div class="hl-row"><span>${r[0]}</span><b>${r[1]}${r[2]?` <small style="color:var(--amb)">${r[2]}</small>`:''}</b></div>`).join('') + `
+    <div class="hl-row"><span>예측 엔진</span><select onchange="setEngineView(this.value)" style="padding:5px 8px;font-size:12px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--surf);color:var(--txt);">
+      ${Object.keys(ENGINES).map(k => `<option value="${k}"${k===fcEngine()?' selected':''}>${ENGINES[k]}${k===settingStr('FC_ENGINE','legacy')?' · 팀 기준':''}</option>`).join('')}</select></div>
+    <div class="hl-row"><span>계절 보정</span><b>${seasonalTable() ? (EXTRA.pastWeekly||[]).length && !_seasonFromOrders() ? '2025년 과거 자료로 적용 중' : '발주 데이터로 적용 중' : '과거 주간 집계 없음 (setupV31 실행 필요)'}</b></div>
+    <div class="hl-row"><span>명절 직전 선발주 계수</span><b>${hf === 1 ? '측정 불가 · 적용 안 함' : '×' + hf.toFixed(2) + ` (명절 ${_hf?.n||0}회 측정)`}</b></div>
+    <div class="pf-note" style="margin-top:6px;">팀 기준 값은 시트 '설정' 탭에서 바꾸면 다음 동기화부터 모든 기기에 적용됩니다. 홈 이탈 슬라이더와 이 화면의 엔진 선택은 이 기기 화면에만 적용됩니다.</div>`;
+}
+function _seasonFromOrders(){
+  const byM = {}; for (const o of orders) if (o.date) byM[o.date.slice(0,7)] = 1;
+  return Object.keys(byM).length >= 14;
 }
 
 
